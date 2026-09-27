@@ -27,18 +27,18 @@ const clean = (k: WorldKind, d: Partial<z.infer<typeof worldInputSchema>>) =>
 export async function createWorldEntity(db: DB, userId: string, novelId: string, kind: WorldKind, input: z.input<typeof worldInputSchema>): Promise<WorldEntity> {
   await assertNovelOwner(db, userId, novelId);
   const data = parse(worldInputSchema, input);
-  const [row] = await db.insert(T(kind)).values({ ...clean(kind, data), novelId }).returning();
-  return row as WorldEntity;
+  const rows = (await db.insert(T(kind)).values({ ...clean(kind, data), novelId }).returning()) as WorldEntity[];
+  return rows[0];
 }
 export async function listWorldEntities(db: DB, userId: string, novelId: string, kind: WorldKind): Promise<WorldEntity[]> {
   await assertNovelOwner(db, userId, novelId);
-  return db.select().from(T(kind)).where(eq(T(kind).novelId, novelId)).orderBy(asc(T(kind).name)) as Promise<WorldEntity[]>;
+  return db.select().from(T(kind)).where(eq(T(kind).novelId, novelId)).orderBy(asc(T(kind).name)) as unknown as Promise<WorldEntity[]>;
 }
 export async function updateWorldEntity(db: DB, userId: string, kind: WorldKind, id: string, patch: Partial<z.input<typeof worldInputSchema>>): Promise<WorldEntity> {
   await assertRowInNovel(db, userId, T(kind), id, labels[kind]);
   const data = parse(worldInputSchema.partial(), patch);
-  const [row] = await db.update(T(kind)).set({ ...clean(kind, data), userEdited: true }).where(eq(T(kind).id, id)).returning();
-  return row as WorldEntity;
+  const rows = (await db.update(T(kind)).set({ ...clean(kind, data), userEdited: true }).where(eq(T(kind).id, id)).returning()) as WorldEntity[];
+  return rows[0];
 }
 export async function deleteWorldEntity(db: DB, userId: string, kind: WorldKind, id: string) {
   await assertRowInNovel(db, userId, T(kind), id, labels[kind]);
