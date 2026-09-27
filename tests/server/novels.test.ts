@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestDb } from '../helpers/db';
 import { makeUser } from '../helpers/fixtures';
-import { createNovel, listNovels, getNovel, updateNovel, deleteNovel, updateNovelSettings } from '@/server/services/novels';
+import { eq } from 'drizzle-orm';
+import { createNovel, listNovels, getNovel, updateNovel, deleteNovel, updateNovelSettings, listNovelSummaries } from '@/server/services/novels';
+import { createChapter } from '@/server/services/chapters';
+import { saveManualVersion } from '@/server/services/versions';
+import * as s from '@/server/db/schema';
 import { NotFoundError, ValidationError } from '@/server/errors';
 import type { DB } from '@/server/db/types';
 
@@ -34,6 +38,17 @@ describe('novels service', () => {
   it('treats malformed ids as not found', async () => {
     const u = await makeUser(db);
     await expect(getNovel(db, u.id, 'not-a-uuid')).rejects.toBeInstanceOf(NotFoundError);
+  });
+  it('summarizes chapter and canon counts per novel, scoped to the owner', async () => {
+    const u = await makeUser(db); const other = await makeUser(db);
+    const n = await createNovel(db, u.id, { title: 'Counted' });
+    const c1 = await createChapter(db, u.id, n.id, { mainIdea: 'a' });
+    await createChapter(db, u.id, n.id, { mainIdea: 'b' });
+    const v = await saveManualVersion(db, u.id, c1.id, 'text');
+    await db.update(s.chapters).set({ approvedVersionId: v.id, status: 'approved' }).where(eq(s.chapters.id, c1.id));
+    const [row] = await listNovelSummaries(db, u.id);
+    expect([row.title, row.chapterCount, row.canonCount]).toEqual(['Counted', 2, 1]);
+    expect(await listNovelSummaries(db, other.id)).toHaveLength(0);
   });
   it('updates settings', async () => {
     const u = await makeUser(db);

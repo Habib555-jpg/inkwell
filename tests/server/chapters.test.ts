@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { createTestDb } from '../helpers/db';
 import { makeUser, makeNovel } from '../helpers/fixtures';
-import { createChapter, listChapters, updateChapter, getChapterDetail } from '@/server/services/chapters';
+import { createChapter, listChapters, updateChapter, getChapterDetail, chapterNumbersForVersions } from '@/server/services/chapters';
+import { saveManualVersion } from '@/server/services/versions';
 import { createCharacter } from '@/server/services/characters';
 import { ConflictError, NotFoundError, ValidationError } from '@/server/errors';
 import type { DB } from '@/server/db/types';
@@ -33,5 +34,15 @@ describe('chapters', () => {
     expect((await listChapters(db, a.id, n.id)).map((c) => c.number)).toEqual([1, 2]);
     await expect(getChapterDetail(db, b.id, c1.id)).rejects.toBeInstanceOf(NotFoundError);
     await expect(updateChapter(db, b.id, c1.id, { title: 'x' })).rejects.toBeInstanceOf(NotFoundError);
+  });
+  it('maps version ids to chapter numbers within one novel only', async () => {
+    const u = await makeUser(db); const n = await makeNovel(db, u.id); const other = await makeNovel(db, u.id);
+    const c = await createChapter(db, u.id, n.id, { number: 4, mainIdea: 'x' });
+    const v = await saveManualVersion(db, u.id, c.id, 'text');
+    const oc = await createChapter(db, u.id, other.id, { number: 9, mainIdea: 'y' });
+    const ov = await saveManualVersion(db, u.id, oc.id, 'text');
+    const m = await chapterNumbersForVersions(db, n.id, [v.id, ov.id]);
+    expect(m.get(v.id)).toBe(4);
+    expect(m.has(ov.id)).toBe(false);
   });
 });

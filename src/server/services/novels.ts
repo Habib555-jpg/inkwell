@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import * as s from '../db/schema';
 import type { DB } from '../db/types';
 import { assertNovelOwner } from './access';
@@ -35,4 +35,15 @@ export async function updateNovelSettings(db: DB, userId: string, novelId: strin
 export async function deleteNovel(db: DB, userId: string, novelId: string) {
   await assertNovelOwner(db, userId, novelId);
   await db.delete(s.novels).where(eq(s.novels.id, novelId));
+}
+
+/** Novel list with chapter/canon counts for dashboards (owner-scoped). */
+export async function listNovelSummaries(db: DB, userId: string) {
+  const rows = await db.select({
+    id: s.novels.id, title: s.novels.title, genre: s.novels.genre, premise: s.novels.premise, updatedAt: s.novels.updatedAt,
+    chapterCount: sql<number>`(select count(*)::int from chapters c where c.novel_id = "novels"."id")`,
+    canonCount: sql<number>`(select count(*)::int from chapters c where c.novel_id = "novels"."id" and c.approved_version_id is not null)`,
+    openConflicts: sql<number>`(select count(*)::int from memory_conflicts m where m.novel_id = "novels"."id" and m.status = 'open')`,
+  }).from(s.novels).where(eq(s.novels.ownerId, userId)).orderBy(desc(s.novels.updatedAt));
+  return rows.map((r) => ({ ...r, chapterCount: Number(r.chapterCount), canonCount: Number(r.canonCount), openConflicts: Number(r.openConflicts) }));
 }

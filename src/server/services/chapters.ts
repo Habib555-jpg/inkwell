@@ -83,3 +83,13 @@ export async function deleteChapter(db: DB, userId: string, chapterId: string) {
   if (ch.approvedVersionId) throw new ConflictError('Approved chapters cannot be deleted; memory depends on them');
   await db.delete(s.chapters).where(eq(s.chapters.id, chapterId));
 }
+
+/** Resolves provenance (source_chapter_version_id) to chapter numbers, restricted to one novel. */
+export async function chapterNumbersForVersions(db: DB, novelId: string, versionIds: (string | null)[]): Promise<Map<string, number>> {
+  const ids = [...new Set(versionIds.filter((x): x is string => !!x))];
+  if (!ids.length) return new Map();
+  const rows = await db.select({ id: s.chapterVersions.id, number: s.chapters.number }).from(s.chapterVersions)
+    .innerJoin(s.chapters, eq(s.chapters.id, s.chapterVersions.chapterId))
+    .where(and(eq(s.chapterVersions.novelId, novelId), inArray(s.chapterVersions.id, ids)));
+  return new Map(rows.map((r) => [r.id, r.number]));
+}
