@@ -1,7 +1,7 @@
 # Webnovel AI Writing Workspace — Design Spec
 
 Date: 2026-09-27
-Status: Approved (conversation), pending written-spec review
+Status: Approved (written spec, incl. §18 addendum)
 
 ## 1. Intent
 
@@ -153,7 +153,7 @@ All ids `uuid`. All novel-owned tables carry `novel_id` FK (cascade) + index. Ti
 
 `buildContextPack(novelId, chapterId)`:
 1. **Always:** L1 compact profile; L7 requirements; active L6 preferences.
-2. **Characters:** those in `character_ids` + any named in requirements text (alias match) → full cards incl. speech style; relationships among them (active); their last 3 timeline events.
+2. **Characters:** those in `character_ids` + any named in requirements text (alias match) → full cards incl. speech style and **voice card** (§18.2); relationships among them (active); their last 3 timeline events; accepted character-scoped preferences.
 3. **Recency:** summaries of the previous 2 canon chapters + last ~600 words of the immediately previous canon chapter (scene continuity).
 4. **Semantic:** query = main idea + required events + dialogue points; embed; cosine top-k (default 8) over canon chunks with `chapter_number < N`, score boosted by keyword overlap and involved-character mention; dedupe per chapter (max 2 chunks/chapter).
 5. **World:** world_rules/locations/factions/objects whose names or keywords match requirements or retrieved chunks.
@@ -271,3 +271,77 @@ Vitest suites (in-memory PGlite, local provider):
 ## 17. Out of scope (MVP)
 
 OAuth/social login, collaboration between users, export to EPUB, streaming token output (may add), billing.
+
+## 18. Writing quality priorities (added requirement, 2026-09-27)
+
+The writing system prioritizes, in this order when they compete:
+1. **Continuity** with canon (hard constraint)
+2. **Character voice** — each character sounds like themselves and unlike the others
+3. **Emotional consistency** — emotional reactions follow from established state and events
+4. **Natural dialogue** — no uniform eloquence, no everyone-is-a-philosopher, subtext over exposition
+5. **Pacing** — matches dialogue balance setting and target length; scenes earn their space
+
+This order is encoded in every generation/revision system prompt and in critic scoring.
+
+### 18.1 Persistent voice profiles
+
+New table `character_voice_profiles` (character_id PK/FK, novel_id):
+
+| Field | Source | Authority |
+|---|---|---|
+| `user_voice_notes` | User (bible speech_style + vocabulary + free notes) | **User — never overwritten by the system** |
+| `register` (formal/neutral/casual/crude), `sentence_length` (short/medium/long), `emotional_baseline`, `verbal_tics` text[], `avoid` text[] (words/constructions this character would never use) | Derived, then user-editable | Derived value until the user edits a field; edited fields are recorded in `locked_fields text[]` and never re-derived |
+| Stats: `avg_words_per_line`, `contraction_rate`, `question_rate`, `exclamation_rate`, `formality_score` (0–1), `lexical_signature` (top distinctive words vs. other characters, TF-IDF), `signature_phrases` text[] | Derived from approved dialogue only | Recomputed on each approval |
+| `sample_lines` jsonb [{quote, chapterNumber}] ≤ 8, chosen by distinctiveness | Approved dialogue only | User can pin/remove samples |
+| `relationship_registers` jsonb [{toCharacterId, note}] — how they speak to specific people | Derived + user | Same lock rule |
+| `source_version_ids` uuid[], `line_count`, `updated_at` | System | — |
+
+- **Derived only from canon:** dialogue lines are harvested from approved versions only. Drafts never influence a profile.
+- **Dialogue attribution (local provider):** quoted spans are attributed via speech tags ("X said", "said X", "X asked/whispered/…", alias-aware), or the sole named character acting in the same paragraph. Unattributable lines are skipped. LLM providers may do attribution via structured analysis, and the results are validated against the known cast.
+- **Recompute:** a profile is recomputed inside the approval pipeline after extraction, and on re-approval. Lines from retracted versions are removed.
+- **Visibility:** profiles are shown on the Characters page and the Memory page ("Voice" tab), with every derived value editable. A "Reset to derived" action per field clears its lock.
+- **Fallback:** with fewer than 5 attributed lines, the profile relies on the user's notes plus the bible's personality/speech_style, and the UI says "voice still forming".
+
+### 18.2 Voice in the pipeline
+
+- **ContextPack:** each involved character gets a *voice card* (user notes, register, tics, avoid-list, 3–5 sample lines, relevant relationship registers). Voice cards have reserved budget that is trimmed last among character data.
+- **Prompting:** generation and revision prompts include a "voice contract" per character, plus the instructions: "give each speaker distinct diction; vary sentence length by character; allow interruptions, fragments and silence; do not have characters state their feelings outright unless in character."
+- **Local generate:** renders dialogue points attributed to the involved characters, shaped by their profile. It applies contractions or not, short or long lines, verbal tics, and avoids avoid-list words. The draft stays labelled as a local draft.
+
+### 18.3 Voice, emotion and pacing checks (critic + continuity)
+
+Computed for every draft by all providers (deterministic), and LLM review is added when available:
+
+- **`voice_drift`:** per character, the draft's line stats deviate from the profile beyond thresholds, e.g. formality ±0.3, avg words/line ×2, or avoid-list word used. The offending lines are quoted.
+- **`voices_too_similar`:** pairwise similarity of characters' draft dialogue (stat vector + lexical cosine) is above a threshold. The pair and example lines are named.
+- **`uniform_eloquence`:** more than 60% of all dialogue lines exceed 20 words, or the share of abstract/philosophical vocabulary across all speakers is high.
+- **`emotional_discontinuity`:** a character's emotion lexicon in the draft contradicts their latest canon state (current_status, last timeline events, emotional_baseline), and no bridging event appears in the draft. Reported as a warning with evidence.
+- **`pacing`:** the checks are:
+  - actual vs. target words (±25%)
+  - dialogue ratio vs. the `dialogue_balance` setting (heavy ≥ 45%, balanced 25–45%, narration-heavy ≤ 25%)
+  - words spent per required event (flag when one event is > 50% of the chapter)
+  - runs of more than 4 consecutive expository paragraphs without dialogue or action verbs
+
+### 18.4 Feedback scope separation (reinforced)
+
+Every feedback statement is classified into exactly one scope:
+
+- **`chapter`:** applies only to revising this chapter. It is never carried forward and never promoted.
+- **`character:<id>`:** attaches to that character. When it's about voice, it becomes a *candidate voice note* on the profile. The user must accept it before it joins `user_voice_notes`, and it is never applied silently. It is carried into future contexts only for that character, and only once accepted or promoted (≥2 occurrences across ≥2 chapters proposes it; the user confirms).
+- **`story`:** novel-level content direction, e.g. "slower romance". Follows the §9 promotion rules.
+- **`global`:** writing-style preference, e.g. "dialogue too formal" across characters. Follows the §9 promotion rules.
+
+The feedback form shows the classifier's scope for each proposed item, and the user can change it before submitting. The user's choice overrides the classifier. On the Memory page, the Preferences tab separates Global, Story and per-Character sections from the chapter-only notes, which are listed as history.
+
+### 18.5 User authority over canon and memory (reinforced)
+
+- Every memory record (entities, relationships, timeline, chunks, summaries, voice profiles, preferences) can be viewed, edited and deleted by the user.
+- System-derived records show their origin (extracted/derived) and source chapter.
+- User edits always win over later derivations: locked fields, `origin=user` records, and conflicts instead of overwrites.
+- No AI mode writes to memory or canon without an explicit user action.
+
+### 18.6 Tests added
+
+- **Voice profiles:** derivation from approved dialogue only (draft dialogue ignored), attribution, locked fields preserved across recompute, and retraction on re-approval.
+- **Critic checks:** `voices_too_similar` and `voice_drift` detection, emotional discontinuity, and pacing thresholds.
+- **Feedback scope:** chapter-scoped feedback is never promoted or carried forward, character voice feedback creates a candidate (not an applied note), and the user's scope override is honored.
