@@ -33,15 +33,15 @@ export async function applyExtraction(db: DB, c: { novelId: string; versionId: s
   const locRows = await db.select().from(s.locations).where(eq(s.locations.novelId, c.novelId));
   const locResolve = () => makeResolver(locRows);
   for (const [key, table, entityType, factKind] of worldKinds) {
-    const rows = key === 'locations' ? locRows : await db.select().from(table as typeof s.locations).where(eq((table as typeof s.locations).novelId, c.novelId));
+    const rows = key === 'locations' ? locRows : await db.select().from(table as unknown as typeof s.locations).where(eq((table as unknown as typeof s.locations).novelId, c.novelId));
     const find = makeResolver(rows);
     for (const e of facts[key]) {
       const hit = find(e.name);
       if (!hit) {
-        const [row] = await db.insert(table as typeof s.locations).values({ novelId: c.novelId, name: e.name, description: e.description ?? '', ...prov }).returning();
+        const [row] = await db.insert(table as unknown as typeof s.locations).values({ novelId: c.novelId, name: e.name, description: e.description ?? '', ...prov }).returning();
         rows.push(row); r.added[key]++; await fact(factKind, e.name, row.id);
       } else if (e.description && !hit.description) {
-        await db.update(table as typeof s.locations).set({ description: e.description }).where(eq((table as typeof s.locations).id, hit.id)); r.updated++;
+        await db.update(table as unknown as typeof s.locations).set({ description: e.description }).where(eq((table as unknown as typeof s.locations).id, hit.id)); r.updated++;
       } else if (e.description && hit.description && tokenOverlap(e.description, hit.description) < 0.3 && key !== 'locations') {
         await conflict({ kind: 'field', entityType, entityId: hit.id, field: 'description', existingValue: hit.description, proposedValue: e.description });
       }

@@ -3,7 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { createTestContext } from '../helpers/db';
 import { makeUser, setupAshenCrown, seedCanonChapter } from '../helpers/fixtures';
 import { applyExtraction } from '@/server/canon/extract';
-import { createCharacter, updateCharacter } from '@/server/services/characters';
+import { updateCharacter } from '@/server/services/characters';
 import * as s from '@/server/db/schema';
 import type { AppContext } from '@/server/context';
 import type { ExtractedFacts } from '@/server/ai/types';
