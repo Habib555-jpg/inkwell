@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, lt, ne, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, lt, ne, or, sql, isNull } from 'drizzle-orm';
 import * as s from '../db/schema';
 import type { AppContext } from '../context';
 import type { Chapter } from '../services/access';
@@ -8,6 +8,7 @@ import { buildNameRegex, tokenOverlap } from '../text/tokenize';
 import { estimateTokens } from '../ai/usage';
 import { fitToBudget, type BudgetItem } from './budget';
 import { characterCard } from './cards';
+import { characterStateBefore, withStateAt } from './point-in-time';
 import { embedWithCache } from './embed';
 
 const TAIL_WORDS = 600;
@@ -47,7 +48,8 @@ export async function buildContextPack(ctx: AppContext, chapter: Chapter): Promi
   const reqText = [req.mainIdea, ...req.requiredEvents, ...req.dialoguePoints, req.instructions, req.restrictions].join('\n');
 
   // characters
-  const allChars = await db.select().from(s.characters).where(eq(s.characters.novelId, novel.id));
+  // characters as they stood before chapter N (later chapters' state changes are not visible yet)
+  const allChars = withStateAt(await db.select().from(s.characters).where(eq(s.characters.novelId, novel.id)), await characterStateBefore(db, novel.id, N));
   const nameById = new Map(allChars.map((c) => [c.id, c.name]));
   const mentioned = allChars.filter((c) => { const re = buildNameRegex([c.name, ...c.aliases]); return re ? new RegExp(re.source, 'u').test(reqText) : false; });
   const involvedIds = [...new Set([...req.characterIds, ...mentioned.map((c) => c.id)])];
@@ -66,6 +68,7 @@ export async function buildContextPack(ctx: AppContext, chapter: Chapter): Promi
   // relationships
   const rels = involvedIds.length ? await db.select().from(s.characterRelationships).where(and(
     eq(s.characterRelationships.novelId, novel.id), eq(s.characterRelationships.active, true),
+    or(isNull(s.characterRelationships.sinceChapterNumber), lt(s.characterRelationships.sinceChapterNumber, N)),
     or(inArray(s.characterRelationships.fromCharacterId, involvedIds), inArray(s.characterRelationships.toCharacterId, involvedIds)))) : [];
 
   // recent canon chapters
@@ -104,7 +107,7 @@ export async function buildContextPack(ctx: AppContext, chapter: Chapter): Promi
   const prefSel = prefs.filter((p) => p.scope !== 'character' || (p.characterId && involvedIds.includes(p.characterId)));
 
   // assemble + budget
-  const cards = involved.map((c) => characterCard(c, profiles.find((p) => p.characterId === c.id) ?? null, locs.find((l) => l.id === c.currentLocationId)?.name ?? null, recentFor(c.id), nameById));
+  const cards = involved.map((c) => characterCard(c, profiles.find((p) => p.characterId === c.id) ?? null, locs.find((l) => l.id === c.currentLocationId)?.name ?? null, recentFor(c.id), nameById, N));
   const T = (x: unknown) => estimateTokens(JSON.stringify(x));
   const profile = {
     id: novel.id, title: novel.title, genre: novel.genre, premise: novel.premise, setting: novel.setting, writingStyle: novel.writingStyle,

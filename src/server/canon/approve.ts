@@ -1,10 +1,10 @@
-import { and, eq, max, isNotNull } from 'drizzle-orm';
+import { and, eq, max, isNotNull, sql } from 'drizzle-orm';
 import * as s from '../db/schema';
 import type { AppContext } from '../context';
 import { getChapterForUser, getVersionForUser, type Chapter, type ChapterVersion } from '../services/access';
 import { ConflictError, ValidationError } from '../errors';
 import { LOCAL_DRAFT_LABEL } from '../ai/providers/local/draft';
-import { clearDerived } from './retract';
+import { clearDerived, entitiesFromVersion, reconcileEntities } from './retract';
 import { applyExtraction, loadKnownEntities, type ExtractionReport } from './extract';
 import { harvestDialogueLines, recomputeVoiceProfiles } from '../voice/profile';
 import { indexCanonVersion } from '../memory/index-canon';
@@ -15,8 +15,16 @@ import { log } from '../log';
 
 export type ApprovalReport = { chapterId: string; versionId: string; extractionStatus: 'done' | 'failed'; extraction: ExtractionReport | null; error?: string; retractedFrom?: string };
 
-export async function approveVersion(ctx: AppContext, userId: string, versionId: string): Promise<ApprovalReport> {
+/**
+ * Makes a version the chapter's canon. `expectedUpdatedAt` (the last save the client saw) guards against
+ * approving text other than what is on screen; the commit itself also only succeeds if the version is unchanged
+ * since it was read here, so summary/extraction/indexing always describe exactly the committed text.
+ */
+export async function approveVersion(ctx: AppContext, userId: string, versionId: string, opts: { expectedUpdatedAt?: Date | string } = {}): Promise<ApprovalReport> {
   const { version, chapter } = await getVersionForUser(ctx.db, userId, versionId);
+  const readAt = new Date(version.updatedAt);
+  if (opts.expectedUpdatedAt && new Date(opts.expectedUpdatedAt).getTime() !== readAt.getTime())
+    throw new ConflictError('This version changed since you last saw it. Review the latest text, then approve again.');
   if (!version.content.trim()) throw new ValidationError('Cannot approve an empty chapter.');
   if (version.content.includes(LOCAL_DRAFT_LABEL)) throw new ValidationError('This is an unedited local scaffold. Write or edit the chapter (and remove the label line) before approving it as canon.');
   if (chapter.approvedVersionId === version.id) throw new ConflictError('This version is already the approved canon.');
@@ -26,11 +34,16 @@ export async function approveVersion(ctx: AppContext, userId: string, versionId:
     if (open.length) throw new ConflictError(`Resolve the ${open.length} open memory conflict(s) from this chapter's current approval first.`);
   }
   await ctx.db.transaction(async (tx) => {
+    // compare-and-set: only the exact text read above may become canon (an in-place autosave bumps updated_at)
+    const locked = await tx.update(s.chapterVersions).set({ isCanon: true })
+      .where(and(eq(s.chapterVersions.id, version.id), sql`date_trunc('milliseconds', ${s.chapterVersions.updatedAt}) = ${readAt.toISOString()}::timestamptz`))
+      .returning({ id: s.chapterVersions.id });
+    if (!locked.length) throw new ConflictError('This version changed while approving. Review the latest text, then approve again.');
     if (prev) {
-      await clearDerived(tx, prev, { revertStates: true, conflictForEdited: true, chapterNumber: chapter.number, novelId: chapter.novelId });
+      // named entities are handed to the new version and reconciled against its text after extraction — never blindly deleted
+      await clearDerived(tx, prev, { revertStates: true, conflictForEdited: true, chapterNumber: chapter.number, novelId: chapter.novelId, handOverTo: version.id });
       await tx.update(s.chapterVersions).set({ isCanon: false }).where(eq(s.chapterVersions.id, prev));
     }
-    await tx.update(s.chapterVersions).set({ isCanon: true }).where(eq(s.chapterVersions.id, version.id));
     await tx.update(s.chapters).set({ approvedVersionId: version.id, currentVersionId: version.id, status: 'approved', extractionStatus: 'pending', extractionError: null }).where(eq(s.chapters.id, chapter.id));
   });
   const report = await runCanonPipeline(ctx, userId, { ...chapter, approvedVersionId: version.id }, { ...version, isCanon: true });
@@ -54,7 +67,12 @@ async function runCanonPipeline(ctx: AppContext, userId: string, chapter: Chapte
     const ex = await ctx.ai.extractMemory({ text: version.content, chapterNumber: chapter.number, known });
     await recordUsage(db, { userId, novelId, operation: 'extract' }, ex);
     const [{ latest }] = await db.select({ latest: max(s.chapters.number) }).from(s.chapters).where(and(eq(s.chapters.novelId, novelId), isNotNull(s.chapters.approvedVersionId)));
-    const extraction = await db.transaction((tx) => applyExtraction(tx, { novelId, versionId: version.id, chapterNumber: chapter.number, latestCanonNumber: latest ?? chapter.number }, ex.value));
+    const candidates = await entitiesFromVersion(db, version.id); // handed over from the replaced version, or left by a failed run
+    const extraction = await db.transaction(async (tx) => {
+      const rep = await applyExtraction(tx, { novelId, versionId: version.id, chapterNumber: chapter.number, latestCanonNumber: latest ?? chapter.number }, ex.value);
+      await reconcileEntities(tx, { novelId, versionId: version.id, chapterNumber: chapter.number, text: version.content, candidates });
+      return rep;
+    });
     await db.insert(s.chapterSummaries).values({ chapterVersionId: version.id, novelId, summary: sum.value, keyEvents: ex.value.events.map((e) => e.description).slice(0, 8), keywords: extractKeywords(version.content, 15), contentHash: contentHash(version.content) });
     await harvestDialogueLines(db, { novelId, versionId: version.id, chapterNumber: chapter.number, content: version.content });
     await recomputeVoiceProfiles(db, novelId);

@@ -5,7 +5,7 @@ import { requireUserForAction } from '@/server/auth/session';
 import { runAction } from '@/app/_actions/result';
 import { generateDraft } from '@/server/pipeline/generate';
 import { checkVersion } from '@/server/pipeline/checks';
-import { autosaveVersion, restoreVersion, deleteVersion, setCurrentVersion, compareVersions, getVersion } from '@/server/services/versions';
+import { autosaveVersion, restoreVersion, deleteVersion, setCurrentVersion, compareVersions, getVersion, saveManualVersion } from '@/server/services/versions';
 import { updateChapter, type ChapterRequirementsInput } from '@/server/services/chapters';
 import { submitFeedback, updateProposalItems, applyProposal, proposeFromCritic, getProposal } from '@/server/feedback/service';
 import { approveVersion, retryExtraction } from '@/server/canon/approve';
@@ -62,8 +62,8 @@ export const improveAction = async (versionId: string) => runAction(async () => 
 export const checkAction = async (versionId: string) => runAction(async () => {
   const { user, ctx } = await base(); return checkVersion(ctx, user.id, versionId);
 });
-export const approveAction = async (versionId: string) => runAction(async () => {
-  const { user, ctx } = await base(); const r = await approveVersion(ctx, user.id, versionId);
+export const approveAction = async (versionId: string, expectedUpdatedAt?: string) => runAction(async () => {
+  const { user, ctx } = await base(); const r = await approveVersion(ctx, user.id, versionId, { expectedUpdatedAt });
   const { chapter } = await getVersionForUser(ctx.db, user.id, versionId); refresh(chapter.novelId, chapter.id); return r;
 });
 export const retryExtractionAction = async (chapterId: string) => runAction(async () => {
@@ -72,4 +72,10 @@ export const retryExtractionAction = async (chapterId: string) => runAction(asyn
 export const getProposalAction = async (proposalId: string) => runAction(async () => {
   const { user, ctx } = await base(); const p = await getProposal(ctx.db, user.id, proposalId);
   return { id: p.id, source: p.source, baseVersionId: p.baseVersionId, items: p.items };
+});
+/** Autosave fallback when the edited version is gone or no longer editable: keep the text as a new manual version. */
+export const saveAsNewVersionAction = async (chapterId: string, content: string) => runAction(async () => {
+  const { user, ctx } = await base(); const v = await saveManualVersion(ctx.db, user.id, chapterId, content);
+  refresh(v.novelId, chapterId);
+  return { versionId: v.id, versionNumber: v.versionNumber, savedAt: v.updatedAt.toISOString() };
 });

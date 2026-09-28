@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useRef, useState, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -39,6 +39,12 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
   const [approveOpen, setApproveOpen] = useState(false);
   const [notApplied, setNotApplied] = useState<{ change: string }[]>([]);
   const [, startTransition] = useTransition();
+  const editorApi = useRef<{ flush: () => Promise<{ versionId: string | null; savedAt: string | null }> } | null>(null);
+  /** Approval targets exactly what is on screen: pending edits are saved first (possibly into a new version). */
+  const prepareApproval = async () => {
+    const f = editorApi.current ? await editorApi.current.flush() : { versionId: current!.id, savedAt: null };
+    return { versionId: f.versionId ?? current!.id, expectedUpdatedAt: f.savedAt ?? undefined };
+  };
   const setTab = (t: Tab) => { setTabState(t); try { localStorage.setItem('wn:ws-tab', t); } catch { /* optional */ } };
   const refresh = useCallback(() => startTransition(() => router.refresh()), [router]);
 
@@ -102,7 +108,7 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
         <ActionBar hasVersion={!!current} isCanon={isCanon} busy={busy} onGenerate={generate} onImprove={() => void improve()} onCheck={() => void check()} onApprove={() => setApproveOpen(true)} />
 
         {current ? (
-          <EditorPane key={current.id} versionId={current.id} versionNumber={current.versionNumber} initialContent={current.content}
+          <EditorPane key={current.id} chapterId={chapter.id} apiRef={editorApi} versionId={current.id} versionNumber={current.versionNumber} initialContent={current.content}
             readOnly={busy === 'generate' || busy === 'apply'} targetWords={chapter.targetWords ?? 2500} onForked={refresh} />
         ) : (
           <div className="grid min-h-[40vh] place-items-center rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface/60 p-8 text-center text-ink-soft">
@@ -146,7 +152,7 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
       </aside>
 
       {current && (
-        <ApproveDialog open={approveOpen} onOpenChange={setApproveOpen} versionId={current.id} versionNumber={current.versionNumber}
+        <ApproveDialog open={approveOpen} onOpenChange={setApproveOpen} prepare={prepareApproval} versionNumber={current.versionNumber}
           chapterNumber={chapter.number} novelId={novelId} onApproved={refresh} />
       )}
     </div>

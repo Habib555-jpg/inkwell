@@ -7,9 +7,11 @@ export const emptyVoice = (c: CharRow): VoiceCard => ({
   register: '', sentenceLength: '', emotionalBaseline: '', verbalTics: [], avoid: [], sampleLines: [], relationshipRegisters: [],
   userVoiceNotes: [c.speechStyle, c.vocabulary].filter(Boolean).join(' · '), forming: true, lineCount: 0,
 });
-export function voiceCard(c: CharRow, p: VoiceRow | null, nameById: Map<string, string>): VoiceCard {
+/** `beforeChapter`: only canon lines from earlier chapters are offered as samples (no lines from the future). */
+export function voiceCard(c: CharRow, p: VoiceRow | null, nameById: Map<string, string>, beforeChapter = Infinity): VoiceCard {
   if (!p) return emptyVoice(c);
-  const samples = [...p.pinnedSamples, ...p.sampleLines.filter((x) => !p.pinnedSamples.some((y) => y.quote === x.quote))].slice(0, 5);
+  const early = (x: { chapterNumber: number }) => x.chapterNumber < beforeChapter;
+  const samples = [...p.pinnedSamples.filter(early), ...p.sampleLines.filter((x) => early(x) && !p.pinnedSamples.some((y) => y.quote === x.quote))].slice(0, 5);
   return {
     register: p.register, sentenceLength: p.sentenceLength, emotionalBaseline: p.emotionalBaseline,
     verbalTics: p.verbalTics, avoid: p.avoid, sampleLines: samples,
@@ -19,11 +21,11 @@ export function voiceCard(c: CharRow, p: VoiceRow | null, nameById: Map<string, 
     formality: p.stats.formality, avgWordsPerLine: p.stats.avgWordsPerLine,
   };
 }
-export function characterCard(c: CharRow, p: VoiceRow | null, locationName: string | null, recentEvents: string[], nameById: Map<string, string>): CharacterCard {
+export function characterCard(c: CharRow, p: VoiceRow | null, locationName: string | null, recentEvents: string[], nameById: Map<string, string>, beforeChapter = Infinity): CharacterCard {
   return {
     id: c.id, name: c.name, aliases: c.aliases, role: c.role, personality: c.personality, goals: c.goals, fears: c.fears,
     motivations: c.motivations, abilities: c.abilities, weaknesses: c.weaknesses, speechStyle: c.speechStyle, vocabulary: c.vocabulary,
     developmentNotes: c.developmentNotes, currentStatus: c.currentStatus, currentLocation: locationName,
-    voice: voiceCard(c, p, nameById), recentEvents,
+    voice: voiceCard(c, p, nameById, beforeChapter), recentEvents,
   };
 }

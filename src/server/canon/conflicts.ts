@@ -30,8 +30,8 @@ export async function resolveConflict(db: DB, userId: string, conflictId: string
         if (old && decision === 'accept_new') {
           const p = JSON.parse(c.proposedValue) as { type: string; description: string; isSecret: boolean; fromCharacterId: string; toCharacterId: string };
           await tx.update(s.characterRelationships).set({ active: false }).where(eq(s.characterRelationships.id, old.id));
-          await tx.insert(s.characterRelationships).values({ novelId, fromCharacterId: p.fromCharacterId, toCharacterId: p.toCharacterId, type: p.type, description: p.description, isSecret: p.isSecret, sinceChapterNumber: c.chapterNumber, origin: 'extracted', sourceChapterVersionId: c.chapterVersionId });
-        } else if (old) await tx.update(s.characterRelationships).set({ type: mergedValue! }).where(eq(s.characterRelationships.id, old.id));
+          await tx.insert(s.characterRelationships).values({ novelId, fromCharacterId: p.fromCharacterId, toCharacterId: p.toCharacterId, type: p.type, description: p.description, isSecret: p.isSecret, sinceChapterNumber: c.chapterNumber, origin: 'user', userEdited: true, sourceChapterVersionId: c.chapterVersionId }); // the user decided: it survives re-approval
+        } else if (old) await tx.update(s.characterRelationships).set({ type: mergedValue!, userEdited: true }).where(eq(s.characterRelationships.id, old.id));
       } else {
         if (!WRITABLE[c.entityType]?.includes(c.field)) throw new ValidationError(`Field ${c.field} cannot be resolved automatically; edit it on the Memory page.`);
         let value: string | null = decision === 'merge' ? mergedValue!.trim() : c.proposedValue;
@@ -39,7 +39,7 @@ export async function resolveConflict(db: DB, userId: string, conflictId: string
           const locs = await tx.select().from(s.locations).where(eq(s.locations.novelId, novelId));
           value = makeResolver(locs)(value)?.id ?? (await tx.insert(s.locations).values({ novelId, name: value, origin: 'user' }).returning())[0].id;
         }
-        await tx.update(table).set({ [c.field]: value } as never).where(eq(table.id, c.entityId));
+        await tx.update(table).set({ [c.field]: value, userEdited: true } as never).where(eq(table.id, c.entityId)); // a resolved value is user authority
       }
     }
     const status = decision === 'keep_existing' ? 'kept_existing' : decision === 'accept_new' ? 'accepted_new' : 'merged';

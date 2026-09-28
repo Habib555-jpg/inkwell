@@ -1,9 +1,9 @@
 'use client';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, Check, CloudOff, Loader2, PencilLine } from 'lucide-react';
+import { AlertCircle, Check, CloudOff, Loader2, OctagonAlert, PencilLine } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAutosave, type SaveState } from './use-autosave';
+import { useAutosave, type Flushed, type SaveState } from './use-autosave';
 import { cn } from '@/lib/cn';
 
 const STATE: Record<SaveState, { label: string; icon: React.ReactNode; tone: string }> = {
@@ -11,18 +11,20 @@ const STATE: Record<SaveState, { label: string; icon: React.ReactNode; tone: str
   dirty: { label: 'Unsaved changes', icon: <PencilLine className="size-3.5" aria-hidden />, tone: 'text-draft' },
   saving: { label: 'Saving…', icon: <Loader2 className="size-3.5 animate-spin" aria-hidden />, tone: 'text-ink-soft' },
   retrying: { label: 'Offline — retrying', icon: <CloudOff className="size-3.5" aria-hidden />, tone: 'text-changed' },
+  error: { label: 'Not saved', icon: <OctagonAlert className="size-3.5" aria-hidden />, tone: 'text-changed' },
 };
 
 /** Manuscript editor with autosave. Rendered client-only (see chapter-workspace), so it may read localStorage on first render. */
-export default function EditorPane({ versionId, versionNumber, initialContent, readOnly, targetWords, onForked }: {
-  versionId: string; versionNumber: number; initialContent: string; readOnly: boolean; targetWords: number;
-  onForked: () => void;
+export default function EditorPane({ chapterId, versionId, versionNumber, initialContent, readOnly, targetWords, onForked, apiRef }: {
+  chapterId: string; versionId: string; versionNumber: number; initialContent: string; readOnly: boolean; targetWords: number;
+  onForked: () => void; apiRef: React.RefObject<{ flush: () => Promise<Flushed> } | null>;
 }) {
   const handleFork = useCallback((v: { versionId: string; versionNumber: number }) => {
     toast.info(`You're now editing v${v.versionNumber}. v${versionNumber} is unchanged.`);
     onForked();
   }, [onForked, versionNumber]);
-  const { state, savedAt, change, flush, recover } = useAutosave(versionId, handleFork);
+  const { state, error, savedAt, change, flush, recover } = useAutosave(chapterId, versionId, handleFork);
+  useEffect(() => { apiRef.current = { flush }; return () => { apiRef.current = null; }; }, [apiRef, flush]);
   const [text, setText] = useState(initialContent);
   const [recovered, setRecovered] = useState<string | null>(() => recover(initialContent));
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
@@ -58,7 +60,7 @@ export default function EditorPane({ versionId, versionNumber, initialContent, r
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-2 text-xs text-ink-faint">
         <span className="tabular-nums">{words.toLocaleString()} / {targetWords.toLocaleString()} words</span>
         <span className={cn('inline-flex items-center gap-1.5', s.tone)} aria-live="polite">
-          {s.icon}{s.label}{state === 'saved' && savedAt ? ` · ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+          {s.icon}{s.label}{state === 'error' && error ? ` — ${error} Your text is kept on this device.` : ''}{state === 'saved' && savedAt ? ` · ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
         </span>
       </div>
     </div>

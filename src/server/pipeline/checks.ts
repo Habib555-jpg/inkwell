@@ -7,6 +7,7 @@ import type { ContextPack } from '../memory/types';
 import type { Issue } from '../ai/types';
 import { buildContextPack, searchCanon } from '../memory/retrieve';
 import { ruleContinuity } from './continuity';
+import { characterStateBefore, withStateAt } from '../memory/point-in-time';
 import { runCritic, type CriticReport } from './critic';
 import { issuesSchema } from '../ai/schemas';
 import { buildContinuityPrompt, buildCriticPrompt } from '../ai/prompts/analysis';
@@ -16,7 +17,8 @@ import { log } from '../log';
 export interface ContinuityReport { issues: Issue[]; checkedAt: string; provider: string; aiReviewed: boolean }
 
 export async function runDraftChecks(ctx: AppContext, chapter: Chapter, pack: ContextPack, text: string, userId: string): Promise<{ continuity: ContinuityReport; critic: CriticReport }> {
-  const chars = await ctx.db.select().from(s.characters).where(eq(s.characters.novelId, chapter.novelId));
+  // continuity is judged against the story as it stood before this chapter
+  const chars = withStateAt(await ctx.db.select().from(s.characters).where(eq(s.characters.novelId, chapter.novelId)), await characterStateBefore(ctx.db, chapter.novelId, chapter.number));
   const locs = await ctx.db.select().from(s.locations).where(eq(s.locations.novelId, chapter.novelId));
   const others = await Promise.all([s.factions, s.storyObjects, s.worldRules].map((t) => ctx.db.select({ name: (t as typeof s.factions).name }).from(t as typeof s.factions).where(eq((t as typeof s.factions).novelId, chapter.novelId))));
   const locName = (id: string | null) => locs.find((l) => l.id === id)?.name ?? null;

@@ -41,10 +41,12 @@ export async function updateCharacter(db: DB, userId: string, id: string, patch:
 }
 export async function deleteCharacter(db: DB, userId: string, id: string) {
   const novelId = await assertRowInNovel(db, userId, s.characters, id, 'Character');
-  await db.transaction(async (tx) => {
-    // uuid[] columns have no FK; clean them explicitly. Relationships/voice/dialogue cascade via FK.
-    await tx.execute(sql`UPDATE timeline_events SET character_ids = array_remove(character_ids, ${id}::uuid) WHERE novel_id = ${novelId}`);
-    await tx.execute(sql`UPDATE chapters SET character_ids = array_remove(character_ids, ${id}::uuid) WHERE novel_id = ${novelId}`);
-    await tx.delete(s.characters).where(eq(s.characters.id, id));
-  });
+  await db.transaction((tx) => purgeCharacterRecord(tx, id, novelId));
+}
+
+/** The one deletion path for characters: uuid[] columns have no FK, so clean them; relationships/voice/dialogue cascade via FK. */
+export async function purgeCharacterRecord(db: DB, id: string, novelId: string) {
+  await db.execute(sql`UPDATE timeline_events SET character_ids = array_remove(character_ids, ${id}::uuid) WHERE novel_id = ${novelId}`);
+  await db.execute(sql`UPDATE chapters SET character_ids = array_remove(character_ids, ${id}::uuid) WHERE novel_id = ${novelId}`);
+  await db.delete(s.characters).where(eq(s.characters.id, id));
 }

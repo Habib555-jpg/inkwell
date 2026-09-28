@@ -15,13 +15,16 @@ const LEARNS = [
   { icon: MessageSquareQuote, text: 'Dialogue voice for each speaking character' },
 ];
 
-export function ApproveDialog({ open, onOpenChange, versionId, versionNumber, chapterNumber, novelId, onApproved }: {
-  open: boolean; onOpenChange: (o: boolean) => void; versionId: string; versionNumber: number; chapterNumber: number; novelId: string; onApproved: () => void;
+export function ApproveDialog({ open, onOpenChange, versionNumber, chapterNumber, novelId, onApproved, prepare }: {
+  open: boolean; onOpenChange: (o: boolean) => void; versionNumber: number; chapterNumber: number; novelId: string; onApproved: () => void;
+  /** Flushes unsaved edits and returns the exact version (and last save) the user is looking at. */
+  prepare: () => Promise<{ versionId: string; expectedUpdatedAt?: string }>;
 }) {
   const [pending, start] = useTransition();
   const router = useRouter();
   const approve = () => start(async () => {
-    const r = await approveAction(versionId);
+    const target = await prepare();
+    const r = await approveAction(target.versionId, target.expectedUpdatedAt);
     if (!r.ok) { toast.error(r.error); return; }
     onOpenChange(false); onApproved();
     const rep = r.data;
