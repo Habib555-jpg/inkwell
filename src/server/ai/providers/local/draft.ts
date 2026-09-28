@@ -1,6 +1,9 @@
 import type { ContextPack, VoiceCard } from '../../../memory/types';
 import { applyContractions, expandContractions } from '../../../text/style';
 import { buildNameRegex, escapeRe, tokenOverlap } from '../../../text/tokenize';
+import type { RevisionItem } from '../../types';
+import { findQuotes } from '../../../text/dialogue';
+import { splitParagraphs as paras } from '../../../text/tokenize';
 
 export const LOCAL_DRAFT_LABEL = '[Local draft — connect an AI provider for full prose]';
 
@@ -55,4 +58,26 @@ export function renderLocalDraft(pack: ContextPack): string {
     c.mainIdea ? `Chapter focus: ${c.mainIdea}` : '',
     ...scenes,
   ].filter(Boolean).join('\n\n');
+}
+export const LOCAL_REVISION_ACTIONS = new Set(['remove', 'add', 'dialogue_casual', 'dialogue_formal', 'shorten_description']);
+
+const mapQuotes = (p: string, fn: (q: string) => string) => {
+  let out = p;
+  for (const q of findQuotes(p).reverse()) out = out.slice(0, q.index + 1) + fn(out.slice(q.index + 1, q.end - 1)) + out.slice(q.end - 1);
+  return out;
+};
+export function applyLocalRevision(text: string, items: RevisionItem[]) {
+  let ps = paras(text); const applied: string[] = []; const notApplied: string[] = [];
+  for (const it of items) {
+    const target = it.target ?? it.change;
+    switch (it.action) {
+      case 'remove': { const before = ps.length; ps = ps.filter((p) => tokenOverlap(target, p) < 0.5); (ps.length < before ? applied : notApplied).push(it.id); break; }
+      case 'add': ps.push(`${target.replace(/^Add:\s*/i, '')}.`.replace(/\.\.$/, '.')); applied.push(it.id); break;
+      case 'dialogue_casual': ps = ps.map((p) => mapQuotes(p, applyContractions)); applied.push(it.id); break;
+      case 'dialogue_formal': ps = ps.map((p) => mapQuotes(p, expandContractions)); applied.push(it.id); break;
+      case 'shorten_description': ps = ps.map((p) => (findQuotes(p).length ? p : p.split(/(?<=[.!?])\s+/).slice(0, 2).join(' '))); applied.push(it.id); break;
+      default: notApplied.push(it.id);
+    }
+  }
+  return { text: ps.join('\n\n'), applied, notApplied };
 }

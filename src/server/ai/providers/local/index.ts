@@ -2,7 +2,8 @@ import type { AIProvider, AIResult, AnalyzeRequest, ExtractionInput, ExtractedFa
 import { AIError } from '../../../errors';
 import { estimateTokens } from '../../usage';
 import { extractiveSummary } from './summarize';
-import { renderLocalDraft } from './draft';
+import { renderLocalDraft, applyLocalRevision } from './draft';
+import { analyzeFeedbackLocal } from './feedback';
 
 export const LOCAL_MODEL = 'local-rules-v1';
 export const wrap = <T>(value: T, inputText: string, outputText: string): AIResult<T> => ({
@@ -16,16 +17,17 @@ export class LocalProvider implements AIProvider {
   async generateText(req: GenerateRequest): Promise<AIResult<string>> {
     switch (req.task.kind) {
       case 'chapter_draft': { const out = renderLocalDraft(req.task.pack); return wrap(out, req.system + req.messages.map((m) => m.content).join(''), out); }
-      // chapter_revision → Task 16, assistant → Task 22
-      default: throw new AIError(`Local provider cannot handle ${req.task.kind} yet`, 'local');
+      case 'chapter_revision': { const r = applyLocalRevision(req.task.baseText, req.task.items); return wrap(r.text, req.task.baseText, r.text); }
+      // assistant → Task 22
+      default: throw new AIError(`Local provider cannot handle ${(req.task as { kind: string }).kind} yet`, 'local');
     }
   }
   async analyzeText<T>(req: AnalyzeRequest<T>): Promise<AIResult<T>> {
     switch (req.task.kind) {
       // Rule-based continuity + critic checks run for every provider (pipeline/checks.ts); the local LLM-review step adds nothing.
       case 'continuity_review': case 'critic_review': return wrap({ issues: [] } as T, '', '');
-      // feedback_analysis → Task 16
-      default: throw new AIError(`Local provider cannot analyze ${req.task.kind} yet`, 'local');
+      case 'feedback_analysis': { const out = analyzeFeedbackLocal(req.task.input); return wrap(out as T, JSON.stringify(req.task.input), JSON.stringify(out)); }
+      default: throw new AIError(`Local provider cannot analyze ${(req.task as { kind: string }).kind} yet`, 'local');
     }
   }
   async summarize(text: string, opts: { maxWords?: number } = {}): Promise<AIResult<string>> {

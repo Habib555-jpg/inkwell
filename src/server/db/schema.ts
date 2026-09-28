@@ -3,6 +3,7 @@ import {
   pgTable, pgEnum, uuid, text, integer, boolean, timestamp, jsonb, real,
   index, uniqueIndex, customType, check, primaryKey, type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
+import type { RevisionItem } from '../ai/types';
 
 export const vector = customType<{ data: number[]; driverData: string }>({
   dataType: () => 'vector',
@@ -287,7 +288,7 @@ export const revisionProposals = pgTable('revision_proposals', {
   baseVersionId: uuid('base_version_id').notNull().references(() => chapterVersions.id, { onDelete: 'cascade' }),
   feedbackId: uuid('feedback_id').references(() => chapterFeedback.id, { onDelete: 'cascade' }),
   source: proposalSourceEnum('source').notNull(),
-  items: jsonb('items').$type<unknown[]>().notNull().default([]),
+  items: jsonb('items').$type<RevisionItem[]>().notNull().default([]),
   resultingVersionId: uuid('resulting_version_id').references(() => chapterVersions.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
