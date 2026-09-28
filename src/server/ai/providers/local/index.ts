@@ -4,6 +4,7 @@ import { estimateTokens } from '../../usage';
 import { extractiveSummary } from './summarize';
 import { renderLocalDraft, applyLocalRevision } from './draft';
 import { analyzeFeedbackLocal } from './feedback';
+import { extractFactsLocal } from './extract';
 
 export const LOCAL_MODEL = 'local-rules-v1';
 export const wrap = <T>(value: T, inputText: string, outputText: string): AIResult<T> => ({
@@ -34,5 +35,8 @@ export class LocalProvider implements AIProvider {
     const out = extractiveSummary(text, opts.maxWords ?? 120);
     return wrap(out, text, out);
   }
-  async extractMemory(_input: ExtractionInput): Promise<AIResult<ExtractedFacts>> { throw new AIError('extraction arrives in Task 18', 'local'); }
+  async extractMemory(input: ExtractionInput): Promise<AIResult<ExtractedFacts>> {
+    const out = extractFactsLocal(input);
+    return wrap(out, input.text, JSON.stringify(out));
+  }
 }
