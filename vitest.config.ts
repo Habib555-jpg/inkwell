@@ -9,7 +9,7 @@ export default defineConfig({
     hookTimeout: 120_000,
     pool: 'forks',
     // each test file boots its own in-memory Postgres (PGlite WASM, ~150MB); cap concurrency to stay within memory
-    maxWorkers: 3,
+    maxWorkers: 2,
     // the e2e novel runs ~70 AI operations in well under a minute; production default stays 30/min
     env: { AI_RATE_LIMIT_PER_MIN: '1000' },
   },
