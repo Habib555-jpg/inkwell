@@ -7,6 +7,8 @@ export interface VoiceCard {
   sampleLines: { quote: string; chapterNumber: number }[];
   relationshipRegisters: { toName: string; note: string }[];
   userVoiceNotes: string; forming: boolean; lineCount: number;
+  /** Canon dialogue averages, when derived (used by the critic's voice-drift check). */
+  formality?: number; avgWordsPerLine?: number;
 }
 export interface CharacterCard {
   id: string; name: string; aliases: string[]; role: string; personality: string; goals: string; fears: string;

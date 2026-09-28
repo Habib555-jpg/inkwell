@@ -22,7 +22,9 @@ export class LocalProvider implements AIProvider {
   }
   async analyzeText<T>(req: AnalyzeRequest<T>): Promise<AIResult<T>> {
     switch (req.task.kind) {
-      // feedback_analysis → Task 16; continuity_review / critic_review → Task 15
+      // Rule-based continuity + critic checks run for every provider (pipeline/checks.ts); the local LLM-review step adds nothing.
+      case 'continuity_review': case 'critic_review': return wrap({ issues: [] } as T, '', '');
+      // feedback_analysis → Task 16
       default: throw new AIError(`Local provider cannot analyze ${req.task.kind} yet`, 'local');
     }
   }

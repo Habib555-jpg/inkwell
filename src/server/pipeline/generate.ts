@@ -9,13 +9,7 @@ import { recordUsage } from '../ai/usage';
 import { checkRateLimit } from '../security/rate-limit';
 import { getEnv } from '../env';
 import { ValidationError } from '../errors';
-import type { ContextPack } from '../memory/types';
-import type { Chapter } from '../services/access';
-
-/** Replaced in Task 15 by the real continuity + critic pass. */
-export async function runDraftChecks(_ctx: AppContext, _chapter: Chapter, _pack: ContextPack, _text: string, _userId: string): Promise<{ continuity: unknown; critic: unknown }> {
-  return { continuity: null, critic: null };
-}
+import { runDraftChecks } from './checks';
 
 export async function generateDraft(ctx: AppContext, userId: string, chapterId: string) {
   const chapter = await getChapterForUser(ctx.db, userId, chapterId);

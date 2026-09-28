@@ -16,6 +16,7 @@ export function voiceCard(c: CharRow, p: VoiceRow | null, nameById: Map<string, 
     relationshipRegisters: p.relationshipRegisters.map((r) => ({ toName: nameById.get(r.toCharacterId) ?? 'someone', note: r.note })),
     userVoiceNotes: [p.userVoiceNotes, c.speechStyle, c.vocabulary].filter(Boolean).join(' · '),
     forming: p.lineCount < 5, lineCount: p.lineCount,
+    formality: p.stats.formality, avgWordsPerLine: p.stats.avgWordsPerLine,
   };
 }
 export function characterCard(c: CharRow, p: VoiceRow | null, locationName: string | null, recentEvents: string[], nameById: Map<string, string>): CharacterCard {
