@@ -2,6 +2,7 @@ import type { AIProvider, AIResult, AnalyzeRequest, ExtractionInput, ExtractedFa
 import { AIError } from '../../../errors';
 import { estimateTokens } from '../../usage';
 import { extractiveSummary } from './summarize';
+import { renderLocalDraft } from './draft';
 
 export const LOCAL_MODEL = 'local-rules-v1';
 export const wrap = <T>(value: T, inputText: string, outputText: string): AIResult<T> => ({
@@ -14,7 +15,8 @@ export class LocalProvider implements AIProvider {
   model(_tier: Tier) { return LOCAL_MODEL; }
   async generateText(req: GenerateRequest): Promise<AIResult<string>> {
     switch (req.task.kind) {
-      // chapter_draft → Task 14, chapter_revision → Task 16, assistant → Task 22
+      case 'chapter_draft': { const out = renderLocalDraft(req.task.pack); return wrap(out, req.system + req.messages.map((m) => m.content).join(''), out); }
+      // chapter_revision → Task 16, assistant → Task 22
       default: throw new AIError(`Local provider cannot handle ${req.task.kind} yet`, 'local');
     }
   }
