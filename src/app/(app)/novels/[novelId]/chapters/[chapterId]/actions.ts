@@ -7,7 +7,7 @@ import { generateDraft } from '@/server/pipeline/generate';
 import { checkVersion } from '@/server/pipeline/checks';
 import { autosaveVersion, restoreVersion, deleteVersion, setCurrentVersion, compareVersions, getVersion } from '@/server/services/versions';
 import { updateChapter, type ChapterRequirementsInput } from '@/server/services/chapters';
-import { submitFeedback, updateProposalItems, applyProposal, proposeFromCritic } from '@/server/feedback/service';
+import { submitFeedback, updateProposalItems, applyProposal, proposeFromCritic, getProposal } from '@/server/feedback/service';
 import { approveVersion, retryExtraction } from '@/server/canon/approve';
 import { getVersionForUser } from '@/server/services/access';
 
@@ -68,4 +68,8 @@ export const approveAction = async (versionId: string) => runAction(async () => 
 });
 export const retryExtractionAction = async (chapterId: string) => runAction(async () => {
   const { user, ctx } = await base(); const r = await retryExtraction(ctx, user.id, chapterId); return r;
+});
+export const getProposalAction = async (proposalId: string) => runAction(async () => {
+  const { user, ctx } = await base(); const p = await getProposal(ctx.db, user.id, proposalId);
+  return { id: p.id, source: p.source, baseVersionId: p.baseVersionId, items: p.items };
 });

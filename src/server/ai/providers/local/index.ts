@@ -5,6 +5,7 @@ import { extractiveSummary } from './summarize';
 import { renderLocalDraft, applyLocalRevision } from './draft';
 import { analyzeFeedbackLocal } from './feedback';
 import { extractFactsLocal } from './extract';
+import { localAssistantReply } from './assistant';
 
 export const LOCAL_MODEL = 'local-rules-v1';
 export const wrap = <T>(value: T, inputText: string, outputText: string): AIResult<T> => ({
@@ -19,7 +20,7 @@ export class LocalProvider implements AIProvider {
     switch (req.task.kind) {
       case 'chapter_draft': { const out = renderLocalDraft(req.task.pack); return wrap(out, req.system + req.messages.map((m) => m.content).join(''), out); }
       case 'chapter_revision': { const r = applyLocalRevision(req.task.baseText, req.task.items); return wrap(r.text, req.task.baseText, r.text); }
-      // assistant → Task 22
+      case 'assistant': { const out = localAssistantReply(req.task); return wrap(out, req.task.message, out); }
       default: throw new AIError(`Local provider cannot handle ${(req.task as { kind: string }).kind} yet`, 'local');
     }
   }

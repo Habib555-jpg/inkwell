@@ -15,7 +15,8 @@ import { ContinuityPanel } from './continuity-panel';
 import { MemoryUsedPanel } from './memory-used-panel';
 import { VersionsPanel } from './versions-panel';
 import { ApproveDialog } from './approve-dialog';
-import { checkAction, generateAction, improveAction, retryExtractionAction } from '@/app/(app)/novels/[novelId]/chapters/[chapterId]/actions';
+import { AssistantPanel } from './assistant-panel';
+import { checkAction, generateAction, getProposalAction, improveAction, retryExtractionAction } from '@/app/(app)/novels/[novelId]/chapters/[chapterId]/actions';
 import type { ContinuityReport, CriticReport, MemoryLabel, WsChapter, WsFeedback, WsProposal, WsVersion, WsVersionSummary } from './types';
 
 const EditorPane = dynamic(() => import('./editor-pane'), {
@@ -121,7 +122,8 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
           </TabsList>
           <div className="mt-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-card">
             <TabsContent value="assistant" className="mt-0">
-              <p className="text-sm text-ink-soft">Assistant modes arrive with the next build step.</p>
+              <AssistantPanel novelId={novelId} chapterId={chapter.id} onVersionCreated={refresh}
+                onReviewProposal={(id) => void run('feedback', () => getProposalAction(id), (p) => { setProposal({ id: p.id, source: p.source, baseVersionId: p.baseVersionId, items: p.items }); setTab('feedback'); })} />
             </TabsContent>
             <TabsContent value="feedback" className="mt-0">
               {current ? (
