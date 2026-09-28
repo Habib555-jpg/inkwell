@@ -78,6 +78,7 @@ try {
   await page.getByRole('button', { name: 'Create chapter' }).click();
   await page.waitForURL(/\/chapters\/[0-9a-f-]{36}$/);
 
+  const chapterUrl = page.url();
   // persistence after reload
   await page.goto(`${novelUrl}/chapters`);
   await page.reload();
@@ -85,6 +86,36 @@ try {
   await page.goto(`${novelUrl}/world`);
   await expectText("Gull's Rest");
   await shot('06-after-reload');
+
+  if (stage === 'loop') {
+    // full core loop: generate → edit → rate → revise → write prose → approve → memory
+    await page.goto(chapterUrl);
+    await page.getByRole('button', { name: 'Generate draft' }).click();
+    await expectText('New draft ready');
+    await expectText('Local draft');
+    await shot('07-generated');
+    await page.getByRole('tab', { name: /Feedback/ }).click();
+    await page.getByLabel('Did the dialogue feel natural?').fill('The dialogue is too formal.');
+    await page.getByLabel('Should anything be removed?').fill('Chapter focus');
+    await page.getByRole('button', { name: /Save feedback/ }).click();
+    await expectText('Proposed changes');
+    for (const b of await page.getByRole('button', { name: 'Accept' }).all()) await b.click();
+    await page.getByRole('button', { name: /Apply .*accepted change/ }).click();
+    await expectText('Revised draft created');
+    await shot('08-revised');
+    const prose = ['Mira Vale cut the ledger free and slid it under her coat.', '“Figures,” Mira said. “Nobody guards the good stuff.”',
+      '“I do not approve of theft,” Bram Holt said. “It is beneath us.”', 'Bram said nothing more. Mira steals the ledger, and Bram sees her and says nothing.'].join('\n\n');
+    await page.getByLabel('Chapter text').fill(prose);
+    await expectText('Saved');
+    await page.getByRole('button', { name: 'Approve chapter' }).click();
+    await page.getByRole('button', { name: 'Approve as canon' }).click();
+    await expectText('Canon updated');
+    await shot('09-approved');
+    await page.goto(`${novelUrl}/memory`);
+    await expectText('Canon chapters');
+    await expectText('Chapter 1');
+    await shot('10-memory');
+  }
   console.log(JSON.stringify({ ok: true, novelUrl, errors }, null, 2));
 } catch (e) {
   await shot('zz-failure').catch(() => {});
