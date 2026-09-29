@@ -11,11 +11,12 @@ fs.mkdirSync(shots, { recursive: true });
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+page.setDefaultTimeout(60000); // dev server compiles routes on first hit; slow machines need headroom
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const shot = (name) => page.screenshot({ path: `${shots}/${stage}-${name}.png`, fullPage: true });
-const expectText = async (text) => { await page.getByText(text, { exact: false }).first().waitFor({ timeout: 15000 }); };
+const expectText = async (text) => { await page.getByText(text, { exact: false }).first().waitFor({ timeout: 60000 }); };
 const email = `smoke-${Date.now()}@test.io`;
 
 try {
@@ -25,7 +26,7 @@ try {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('correct horse battery');
   await page.getByRole('button', { name: 'Create account' }).click();
-  await page.waitForURL(/\/novels$/);
+  await page.waitForURL(/\/novels$/, { timeout: 120000 }); // first request may create + migrate the database
   await shot('01-novels-empty');
 
   // create novel with 2 characters
@@ -99,8 +100,10 @@ try {
     await page.getByLabel('Should anything be removed?').fill('Chapter focus');
     await page.getByRole('button', { name: /Save feedback/ }).click();
     await expectText('Proposed changes');
-    for (const b of await page.getByRole('button', { name: 'Accept' }).all()) await b.click();
-    await page.getByRole('button', { name: /Apply .*accepted change/ }).click();
+    for (const b of await page.getByRole('button', { name: 'Accept', exact: true }).all()) await b.click(); // exact: 'Accept' is also a substring of 'Apply N accepted changes'
+    const apply = page.getByRole('button', { name: /Apply .*accepted change/ });
+    await page.waitForFunction(() => { const b = [...document.querySelectorAll('button')].find((x) => /Apply .*accepted change/.test(x.textContent ?? '')); return b && !b.disabled; }, null, { timeout: 60000 }); // item saves finish first
+    await apply.click();
     await expectText('Revised draft created');
     await shot('08-revised');
     const prose = ['Mira Vale cut the ledger free and slid it under her coat.', '“Figures,” Mira said. “Nobody guards the good stuff.”',
@@ -115,6 +118,26 @@ try {
     await expectText('Canon chapters');
     await expectText('Chapter 1');
     await shot('10-memory');
+    // every memory tab renders
+    for (const [tab, text] of [['conflicts', 'Conflicts'], ['characters', 'voice'], ['relationships', 'Relationships'], ['world', 'Locations'],
+      ['timeline', 'Chapter 1'], ['preferences', 'Global style'], ['semantic', 'Re-index all canon'], ['facts', 'Chapter 1']]) {
+      await page.goto(`${novelUrl}/memory?tab=${tab}`);
+      await expectText(text);
+    }
+    await shot('11-memory-voice');
+    // dashboard: rating chart, usage, novel card
+    await page.goto(`${BASE}/`);
+    await expectText('Ratings');
+    await expectText('AI usage');
+    await expectText('The Ashen Crown');
+    await page.locator('svg[role="img"]').first().waitFor({ timeout: 15000 });
+    await shot('12-dashboard');
+    // workspace after approval: canon badge + versions tab
+    await page.goto(chapterUrl);
+    await expectText('Canon');
+    await page.getByRole('tab', { name: /Versions/ }).click();
+    await expectText('Every draft is kept');
+    await shot('13-workspace-versions');
   }
   console.log(JSON.stringify({ ok: true, novelUrl, errors }, null, 2));
 } catch (e) {

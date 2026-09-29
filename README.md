@@ -13,7 +13,7 @@ npm run dev                     # http://localhost:3000
 npm run db:seed                 # optional: demo account with a 6-chapter novel (prints its password once)
 ```
 
-The database is embedded Postgres (PGlite + pgvector) stored in `./.data/pglite`, created and migrated automatically on first request. The default AI provider runs fully offline.
+The database is embedded Postgres (PGlite + pgvector), created and migrated automatically on first request, in a per-user local folder (`%LOCALAPPDATA%\Inkwell\pglite` on Windows, `~/Library/Application Support/Inkwell/pglite` on macOS, `~/.local/share/Inkwell/pglite` on Linux). It deliberately lives outside the project: cloud-sync tools like OneDrive mark files read-only and lock them mid-write, which breaks a live database. Stop the dev server with Ctrl+C rather than killing the process. The default AI provider runs fully offline.
 
 > Windows note: this repo lives in a folder whose name contains `&`, which breaks npm's `.bin` shims, so every `npm run` script calls `node` on the package entry point directly. Use the scripts rather than `npx`.
 
@@ -48,7 +48,7 @@ Browser (React 19, client components) ──server actions──▶ src/app/**/a
 | Variable | Default | Purpose |
 |---|---|---|
 | `DATABASE_URL` | *(unset)* | Real Postgres (needs the `vector` extension). Unset uses embedded PGlite. |
-| `PGLITE_DIR` | `./.data/pglite` | Where embedded Postgres stores data. |
+| `PGLITE_DIR` | per-user local data folder | Where embedded Postgres stores data. Never point it into a OneDrive/Dropbox-synced folder. |
 | `DB_AUTO_MIGRATE` | `true` | Apply migrations when the server first connects. |
 | `AI_PROVIDER` | `local` | `local` · `ollama` · `anthropic` · `openai` |
 | `AI_MODEL` / `AI_MODEL_FAST` | provider defaults | Main writing model / cheaper model for summaries, extraction and analysis. |
