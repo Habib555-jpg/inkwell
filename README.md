@@ -50,12 +50,13 @@ Browser (React 19, client components) ──server actions──▶ src/app/**/a
 | `DATABASE_URL` | *(unset)* | Real Postgres (needs the `vector` extension). Unset uses embedded PGlite. |
 | `PGLITE_DIR` | per-user local data folder | Where embedded Postgres stores data. Never point it into a OneDrive/Dropbox-synced folder. |
 | `DB_AUTO_MIGRATE` | `true` | Apply migrations when the server first connects. |
-| `AI_PROVIDER` | `local` | `local` · `ollama` · `anthropic` · `openai` |
+| `AI_PROVIDER` | `local` | `local` · `gemini` · `ollama` · `anthropic` · `openai` |
 | `AI_MODEL` / `AI_MODEL_FAST` | provider defaults | Main writing model / cheaper model for summaries, extraction and analysis. |
 | `ANTHROPIC_API_KEY` | — | Required when `AI_PROVIDER=anthropic`. |
 | `ANTHROPIC_SERVER_FALLBACK` | `default` | `default` enables Anthropic's server-side refusal fallback on models that support it; `off` disables it. |
 | `EMBEDDING_PROVIDER` / `EMBEDDING_MODEL` | `local` | `local` · `ollama` · `openai`. Anthropic has no embeddings API. |
 | `OPENAI_API_KEY` | — | Required for OpenAI text or embeddings. |
+| `GEMINI_API_KEY` | — | Free key for `AI_PROVIDER=gemini` / `EMBEDDING_PROVIDER=gemini`. |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Local Ollama server. |
 | `AI_RATE_LIMIT_PER_MIN` | `30` | AI operations per user per minute. |
 | `LOG_LEVEL` | `info` | `debug` · `info` · `warn` · `error` |
@@ -77,6 +78,7 @@ A keyed provider selected without its key fails at startup with a message naming
 | Provider | How | Notes |
 |---|---|---|
 | **local** (default) | nothing | Offline and free. Retrieval, memory extraction, conflict detection, continuity rules, the critic, voice profiles and feedback analysis all run for real on your data. **Drafts are structured scaffolds** (scenes, beats, voice cues, canon reminders), clearly labelled `[Local draft — …]`. They are not finished prose, and approval refuses an unedited scaffold. |
+| **Gemini (free)** | `AI_PROVIDER=gemini`, `GEMINI_API_KEY=…` (free key at aistudio.google.com/apikey, Google account, no card) | Real prose at no cost through Gemini's OpenAI-compatible endpoint. Defaults `gemini-3.8-flash` (writing) / `gemini-3.1-flash-lite` (analysis), changeable with `AI_MODEL` / `AI_MODEL_FAST`. Free-tier rate limits apply (see AI Studio); each draft uses ~3 requests (write + continuity review + critic). Embeddings stay local unless `EMBEDDING_PROVIDER=gemini`. |
 | **Ollama** | `AI_PROVIDER=ollama`, `EMBEDDING_PROVIDER=ollama`; `ollama pull llama3.1 nomic-embed-text` | Real prose with no key; quality depends on your hardware and model. |
 | **Anthropic** | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=…` | Defaults: `claude-opus-5` (writing) and `claude-haiku-4-5` (analysis); change them with `AI_MODEL` / `AI_MODEL_FAST`. Long outputs use streaming. Structured analysis uses native structured outputs (`messages.parse` + `zodOutputFormat`), falling back to validated JSON. `ANTHROPIC_SERVER_FALLBACK=default` enables the server-side refusal fallback on supporting models. Pair with `EMBEDDING_PROVIDER=openai`, `ollama` or `local`. |
 | **OpenAI** | `AI_PROVIDER=openai`, `OPENAI_API_KEY=…` | Defaults `gpt-5` / `gpt-5-mini`; embeddings `text-embedding-3-small`. |

@@ -34,6 +34,11 @@ describe('loadEnv', () => {
   it('lets the Anthropic server-side fallback be turned off', () => {
     expect(loadEnv({ ANTHROPIC_SERVER_FALLBACK: 'off' }).ANTHROPIC_SERVER_FALLBACK).toBe('off');
   });
+  it('requires GEMINI_API_KEY for the gemini provider and embeddings', () => {
+    expect(() => loadEnv({ AI_PROVIDER: 'gemini' })).toThrow(/GEMINI_API_KEY/);
+    expect(() => loadEnv({ EMBEDDING_PROVIDER: 'gemini' })).toThrow(/GEMINI_API_KEY/);
+    expect(loadEnv({ AI_PROVIDER: 'gemini', GEMINI_API_KEY: 'k' }).AI_PROVIDER).toBe('gemini');
+  });
   it('rejects unknown provider names', () => {
     expect(() => loadEnv({ AI_PROVIDER: 'nope' })).toThrow(ConfigError);
   });

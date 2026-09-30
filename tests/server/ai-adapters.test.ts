@@ -103,3 +103,18 @@ describe('Anthropic adapter (injected client)', () => {
     await expect(p.generateText(req)).rejects.toBeInstanceOf(AIError);
   });
 });
+
+describe('Gemini via the OpenAI-compatible endpoint', () => {
+  it('points the OpenAI SDK at Google and skips json_object mode', async () => {
+    const { GEMINI_BASE_URL } = await import('@/server/ai/registry');
+    const p = new OpenAIProvider({ apiKey: 'k', main: 'gemini-3.8-flash', fast: 'gemini-3.1-flash-lite', baseURL: GEMINI_BASE_URL, id: 'gemini', jsonMode: false });
+    expect(p.id).toBe('gemini');
+    expect((p as unknown as { client: { baseURL: string } }).client.baseURL).toBe('https://generativelanguage.googleapis.com/v1beta/openai/');
+    const create = vi.fn().mockResolvedValue({ choices: [{ message: { content: '{"ok":true}' } }], usage: { prompt_tokens: 3, completion_tokens: 2 } });
+    const q = new OpenAIProvider({ apiKey: 'k', main: 'm', fast: 'f', id: 'gemini', jsonMode: false, client: { chat: { completions: { create } } } as never });
+    const r = await q.analyzeText({ system: 's', messages: [{ role: 'user', content: 'u' }], schema: z.object({ ok: z.boolean() }), task });
+    expect(r.value).toEqual({ ok: true });
+    expect(create.mock.calls[0][0]).not.toHaveProperty('response_format');
+    expect(r.provider).toBe('gemini');
+  });
+});

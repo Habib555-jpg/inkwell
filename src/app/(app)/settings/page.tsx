@@ -38,11 +38,12 @@ export default async function SettingsPage() {
             <div><dt className="text-ink-faint">Anthropic server-side fallback</dt><dd className="font-medium">{st.aiProvider === 'anthropic' ? st.anthropicServerFallback : 'n/a'}</dd></div>
             <div><dt className="flex items-center gap-1 text-ink-faint"><KeyRound className="size-3.5" aria-hidden />ANTHROPIC_API_KEY</dt><dd><Yes ok={st.keyConfigured.anthropic} /></dd></div>
             <div><dt className="flex items-center gap-1 text-ink-faint"><KeyRound className="size-3.5" aria-hidden />OPENAI_API_KEY</dt><dd><Yes ok={st.keyConfigured.openai} /></dd></div>
+            <div><dt className="flex items-center gap-1 text-ink-faint"><KeyRound className="size-3.5" aria-hidden />GEMINI_API_KEY (free)</dt><dd><Yes ok={st.keyConfigured.gemini} /></dd></div>
           </dl>
           {st.local && (
             <p className="rounded-xl border border-info/20 bg-info-soft p-4 text-info">
               Running fully offline. Drafts are structured scaffolds; memory, retrieval, continuity and voice analysis are fully functional.
-              To enable AI prose, set <code>AI_PROVIDER</code> and a key in <code>.env.local</code> and restart (see README → AI provider setup).
+              For real AI prose at no cost, get a free Gemini key at aistudio.google.com/apikey, set <code>AI_PROVIDER=gemini</code> and <code>GEMINI_API_KEY</code> in <code>.env.local</code>, and restart (see README → AI provider setup).
             </p>
           )}
         </div>

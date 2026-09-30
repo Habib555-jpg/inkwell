@@ -14,4 +14,9 @@ describe('provider status', () => {
     expect(st.anthropicServerFallback).toBe('default');
     expect(getProviderStatus(loadEnv({ AI_PROVIDER: 'anthropic', ANTHROPIC_API_KEY: 'k', ANTHROPIC_SERVER_FALLBACK: 'off' })).anthropicServerFallback).toBe('off');
   });
+  it('reports Gemini defaults and key presence without the key', () => {
+    const st = getProviderStatus(loadEnv({ AI_PROVIDER: 'gemini', GEMINI_API_KEY: 'AIza-secret' }));
+    expect([st.mainModel, st.fastModel, st.keyConfigured.gemini]).toEqual(['gemini-3.8-flash', 'gemini-3.1-flash-lite', true]);
+    expect(JSON.stringify(st)).not.toContain('AIza-secret');
+  });
 });

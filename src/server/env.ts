@@ -8,15 +8,17 @@ const schema = z.object({
   DATABASE_URL: z.string().url().optional(),
   PGLITE_DIR: z.string().optional(),
   DB_AUTO_MIGRATE: z.enum(['true', 'false']).default('true'),
-  AI_PROVIDER: z.enum(['local', 'ollama', 'anthropic', 'openai']).default('local'),
+  AI_PROVIDER: z.enum(['local', 'ollama', 'anthropic', 'openai', 'gemini']).default('local'),
   AI_MODEL: z.string().optional(),
   AI_MODEL_FAST: z.string().optional(),
-  EMBEDDING_PROVIDER: z.enum(['local', 'ollama', 'openai']).default('local'),
+  EMBEDDING_PROVIDER: z.enum(['local', 'ollama', 'openai', 'gemini']).default('local'),
   EMBEDDING_MODEL: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),
   /** Anthropic server-side refusal fallback: "default" lets the API pick a fallback model, "off" disables it. */
   ANTHROPIC_SERVER_FALLBACK: z.enum(['default', 'off']).default('default'),
   OPENAI_API_KEY: z.string().min(1).optional(),
+  /** Free key from https://aistudio.google.com/apikey — used by AI_PROVIDER / EMBEDDING_PROVIDER = gemini. */
+  GEMINI_API_KEY: z.string().min(1).optional(),
   OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434'),
   AI_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(30),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
@@ -49,6 +51,8 @@ export function loadEnv(source: Record<string, string | undefined> = process.env
     throw new ConfigError('AI_PROVIDER=openai requires OPENAI_API_KEY');
   if (env.EMBEDDING_PROVIDER === 'openai' && !env.OPENAI_API_KEY)
     throw new ConfigError('EMBEDDING_PROVIDER=openai requires OPENAI_API_KEY');
+  if ((env.AI_PROVIDER === 'gemini' || env.EMBEDDING_PROVIDER === 'gemini') && !env.GEMINI_API_KEY)
+    throw new ConfigError('The gemini provider requires GEMINI_API_KEY (free at https://aistudio.google.com/apikey)');
   return env;
 }
 
