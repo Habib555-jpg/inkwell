@@ -40,7 +40,7 @@ export default async function ChaptersPage({ params }: { params: Promise<{ novel
           Plan chapter one: its main idea, what must and must not happen, and who is involved.
         </EmptyState>
       ) : (
-        <div className="overflow-x-auto rounded-[var(--radius-card)] border border-line bg-surface shadow-card">
+        <div className="overflow-x-auto glass rounded-[var(--radius-card)] border border-line shadow-card">
           <table className="w-full text-sm">
             <thead className="border-b border-line text-left text-xs uppercase tracking-wide text-ink-faint">
               <tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Chapter</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Words</th><th className="px-4 py-3 text-right">Last rating</th></tr>

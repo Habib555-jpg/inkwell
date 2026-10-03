@@ -19,10 +19,10 @@ const MODES: { mode: AssistantMode; label: string; hint: string; icon: typeof Sp
 ];
 type Msg = { role: 'user' | 'assistant'; content: string; mode: AssistantMode; meta?: Record<string, unknown> };
 
-export function AssistantPanel({ novelId, chapterId, onVersionCreated, onReviewProposal }: {
-  novelId: string; chapterId: string; onVersionCreated: () => void; onReviewProposal: (proposalId: string) => void;
+export function AssistantPanel({ novelId, chapterId, hasDraft, onVersionCreated, onReviewProposal }: {
+  novelId: string; chapterId: string; hasDraft: boolean; onVersionCreated: () => void; onReviewProposal: (proposalId: string) => void;
 }) {
-  const [mode, setMode] = useState<AssistantMode>('critic');
+  const [mode, setMode] = useState<AssistantMode>(hasDraft ? 'critic' : 'generate');
   const [text, setText] = useState('');
   const [messages, setMessages] = useState<Msg[]>([]);
   const [conversationId, setConversationId] = useState<string | undefined>();
@@ -49,7 +49,7 @@ export function AssistantPanel({ novelId, chapterId, onVersionCreated, onReviewP
       <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7 xl:grid-cols-4" role="radiogroup" aria-label="Assistant mode">
         {MODES.map(({ mode: m, label, icon: Icon, hint }) => (
           <button key={m} role="radio" aria-checked={mode === m} title={hint} onClick={() => setMode(m)}
-            className={cn('flex cursor-pointer flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs transition-colors', mode === m ? 'border-accent bg-accent-soft text-accent' : 'border-line hover:bg-sunken')}>
+            className={cn('flex cursor-pointer flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs transition-all duration-200 hover:-translate-y-px', mode === m ? 'border-accent/60 bg-accent-soft text-accent shadow-glow' : 'border-line text-ink-soft hover:border-accent/30 hover:text-ink')}>
             <Icon className="size-4" aria-hidden />{label}
           </button>
         ))}
@@ -60,7 +60,7 @@ export function AssistantPanel({ novelId, chapterId, onVersionCreated, onReviewP
         <AnimatePresence initial={false}>
           {messages.map((m, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}
-              className={cn('max-w-[92%] rounded-2xl px-3 py-2 text-sm', m.role === 'user' ? 'ml-auto bg-accent text-accent-ink' : 'bg-surface shadow-card')}>
+              className={cn('max-w-[92%] rounded-2xl px-3 py-2 text-sm', m.role === 'user' ? 'bg-brand ml-auto text-white shadow-glow' : 'border border-line bg-surface shadow-card')}>
               <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide opacity-60">{MODES.find((x) => x.mode === m.mode)?.label}</p>
               <p className="whitespace-pre-wrap">{m.content}</p>
               {m.meta?.proposalId ? <Button size="sm" variant="secondary" className="mt-2" onClick={() => onReviewProposal(String(m.meta!.proposalId))}>Review changes</Button> : null}
@@ -74,7 +74,7 @@ export function AssistantPanel({ novelId, chapterId, onVersionCreated, onReviewP
         <label htmlFor="assistant-input" className="sr-only">Message</label>
         <textarea id="assistant-input" value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder={current.quick}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(text || current.quick); } }}
-          className="min-h-11 flex-1 resize-none rounded-xl border border-line bg-surface px-3 py-2 text-sm focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25" />
+          className="min-h-11 flex-1 resize-none rounded-xl border border-line bg-sunken/60 px-3 py-2 text-sm transition-all focus:border-accent/70 focus:bg-surface focus:outline-none focus:ring-4 focus:ring-accent/15" />
         <Button type="submit" aria-label="Send" loading={pending} onClick={(e) => { if (!text.trim()) { e.preventDefault(); send(current.quick); } }} icon={<Send className="size-4" aria-hidden />} />
       </form>
       <div className="flex justify-between">

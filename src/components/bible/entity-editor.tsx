@@ -84,7 +84,7 @@ export function EntityEditor({ title, noun, fields, items, onSave, onDelete, ren
 
   return (
     <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-      <div className="rounded-[var(--radius-card)] border border-line bg-surface p-3 shadow-card">
+      <div className="glass rounded-[var(--radius-card)] border border-line p-3 shadow-card">
         <div className="relative mb-2">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink-faint" aria-hidden />
           <Input aria-label={`Search ${title}`} placeholder="Search…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
@@ -104,7 +104,7 @@ export function EntityEditor({ title, noun, fields, items, onSave, onDelete, ren
         <Button variant="secondary" size="sm" className="mt-2 w-full" icon={<Plus className="size-4" aria-hidden />} onClick={() => open(null)}>Add {noun.toLowerCase()}</Button>
       </div>
 
-      <div className="rounded-[var(--radius-card)] border border-line bg-surface p-5 shadow-card">
+      <div className="glass rounded-[var(--radius-card)] border border-line p-5 shadow-card">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">{creating ? `New ${noun.toLowerCase()}` : String(current?.name ?? '')}</h2>
           {current && <OriginBadge item={current} />}

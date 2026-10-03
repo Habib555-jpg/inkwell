@@ -38,7 +38,7 @@ export default async function CharactersPage({ params }: { params: Promise<{ nov
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">Voice profiles</h2>
           {characters.map((c, i) => (
-            <details key={c.id} className="group rounded-[var(--radius-card)] border border-line bg-surface shadow-card">
+            <details key={c.id} className="group glass rounded-[var(--radius-card)] border border-line shadow-card">
               <summary className="cursor-pointer px-5 py-3 font-medium">{c.name}<span className="ml-2 text-xs font-normal text-ink-faint">{profiles[i].lineCount} canon lines</span></summary>
               <div className="border-t border-line p-5">
                 <VoiceProfileEditor novelId={novelId} name={c.name} profile={profiles[i]} names={names} notes={notes.filter((n) => n.characterId === c.id).map((n) => ({ id: n.id, note: n.note }))} />

@@ -30,7 +30,7 @@ export function TimelineEditor({ events, characters, onSave, onDelete }: {
 
   return (
     <div className="space-y-6">
-      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex flex-wrap items-end gap-2 rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-card">
+      <form onSubmit={(e) => { e.preventDefault(); add(); }} className="flex flex-wrap items-end gap-2 glass rounded-[var(--radius-card)] border border-line p-4 shadow-card">
         <label className="text-sm">Chapter<Input type="number" min={0} value={draft.chapterNumber} onChange={(e) => setDraft({ ...draft, chapterNumber: Number(e.target.value) })} className="mt-1 w-24" /></label>
         <label className="min-w-64 flex-1 text-sm">Event<Input value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder="What happened?" className="mt-1" required /></label>
         <label className="text-sm">Importance<Select value={draft.importance} onChange={(e) => setDraft({ ...draft, importance: Number(e.target.value) })} className="mt-1 w-32">

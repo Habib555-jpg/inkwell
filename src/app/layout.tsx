@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Literata } from 'next/font/google';
-import { Toaster } from 'sonner';
+import { ThemedToaster } from '@/components/ui/themed-toaster';
+import { AmbientBackground } from '@/components/ambient-background';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
@@ -11,8 +12,8 @@ export const metadata: Metadata = {
   description: 'A private writing workspace where approved canon is truth.',
 };
 
-// Applies the saved/system theme before paint to avoid a flash.
-const themeScript = `try{var t=localStorage.getItem('wn:theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`;
+// Applies the theme before paint to avoid a flash. Dark (Midnight Ink) is the default; 'light' is opt-in.
+const themeScript = `try{var t=localStorage.getItem('wn:theme');if(t!=='light')document.documentElement.classList.add('dark')}catch(e){document.documentElement.classList.add('dark')}`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
@@ -21,8 +22,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-dvh">
+        <AmbientBackground />
         {children}
-        <Toaster position="bottom-right" richColors closeButton />
+        <ThemedToaster />
       </body>
     </html>
   );

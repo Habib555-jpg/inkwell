@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { AlertCircle, Check, CloudOff, Loader2, OctagonAlert, PencilLine } from 'lucide-react';
+import { AlertCircle, Check, CloudOff, Feather, Loader2, OctagonAlert, PencilLine } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAutosave, type Flushed, type SaveState } from './use-autosave';
 import { cn } from '@/lib/cn';
@@ -29,10 +29,16 @@ export default function EditorPane({ chapterId, versionId, versionNumber, initia
   const [recovered, setRecovered] = useState<string | null>(() => recover(initialContent));
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   const s = STATE[state];
+  const progress = Math.min(1, words / Math.max(1, targetWords));
 
   const onChange = (v: string) => { setText(v); change(v); };
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-surface shadow-card">
+    <div className="manuscript-page glass relative overflow-hidden rounded-[var(--radius-card)] border border-line shadow-card">
+      {/* hairline of gold leaf along the top edge, and the page header */}
+      <div aria-hidden className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/70 to-transparent" />
+      <div className="flex items-center gap-2 border-b border-line/70 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
+        <Feather className="size-3.5 text-gold" aria-hidden />Manuscript<span className="text-ink-faint/70">· v{versionNumber}</span>
+      </div>
       <AnimatePresence>
         {recovered !== null && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
@@ -53,12 +59,16 @@ export default function EditorPane({ chapterId, versionId, versionNumber, initia
         onBlur={() => void flush()}
         spellCheck
         placeholder="Generate a draft, or start writing — every edit is saved as you go."
-        className={cn('manuscript block min-h-[65vh] w-full resize-y rounded-t-[var(--radius-card)] bg-transparent px-6 py-6 text-ink outline-none sm:px-10 md:px-14',
+        className={cn('manuscript mx-auto block min-h-[65vh] w-full max-w-[72ch] resize-y bg-transparent px-6 py-8 text-ink outline-none placeholder:italic placeholder:text-ink-faint sm:px-10',
           readOnly && 'cursor-progress opacity-70')}
-        style={{ maxWidth: '100%' }}
       />
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-2 text-xs text-ink-faint">
-        <span className="tabular-nums">{words.toLocaleString()} / {targetWords.toLocaleString()} words</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/70 px-5 py-2.5 text-xs text-ink-faint">
+        <span className="flex items-center gap-3">
+          <span className="tabular-nums">{words.toLocaleString()} / {targetWords.toLocaleString()} words</span>
+          <span className="h-1 w-28 overflow-hidden rounded-full bg-sunken" role="progressbar" aria-label="Progress toward target length" aria-valuemin={0} aria-valuemax={targetWords} aria-valuenow={words}>
+            <span className="block h-full rounded-full bg-gradient-to-r from-gold via-accent to-ember transition-[width] duration-500" style={{ width: `${progress * 100}%` }} />
+          </span>
+        </span>
         <span className={cn('inline-flex items-center gap-1.5', s.tone)} aria-live="polite">
           {s.icon}{s.label}{state === 'error' && error ? ` — ${error} Your text is kept on this device.` : ''}{state === 'saved' && savedAt ? ` · ${savedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
         </span>

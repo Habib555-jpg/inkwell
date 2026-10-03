@@ -6,6 +6,7 @@ import { BookCheck, Brain, History, MessageSquareQuote, Users } from 'lucide-rea
 import { toast } from 'sonner';
 import { Dialog } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { celebrate } from '@/components/ui/confetti';
 import { approveAction } from '@/app/(app)/novels/[novelId]/chapters/[chapterId]/actions';
 
 const LEARNS = [
@@ -27,6 +28,7 @@ export function ApproveDialog({ open, onOpenChange, versionNumber, chapterNumber
     const r = await approveAction(target.versionId, target.expectedUpdatedAt);
     if (!r.ok) { toast.error(r.error); return; }
     onOpenChange(false); onApproved();
+    celebrate();
     const rep = r.data;
     if (rep.extractionStatus === 'failed') { toast.warning('Chapter is canon, but memory extraction failed. Retry from the banner.'); return; }
     const added = rep.extraction ? Object.values(rep.extraction.added).reduce((a, b) => a + b, 0) : 0;

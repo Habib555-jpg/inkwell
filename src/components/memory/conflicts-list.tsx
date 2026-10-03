@@ -27,7 +27,7 @@ function Conflict({ c, novelId }: { c: ConflictRow; novelId: string }) {
   const retracted = c.kind === 'retracted_record';
   return (
     <motion.li layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 40 }}
-      className="rounded-[var(--radius-card)] border border-line bg-surface p-5 shadow-card">
+      className="glass rounded-[var(--radius-card)] border border-line p-5 shadow-card">
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{c.entityType.replace('_', ' ')} · {c.entityName} · {FIELD[c.field] ?? c.field}</p>
       {retracted ? (
         <p className="mt-2 text-sm">{c.evidence}</p>

@@ -11,6 +11,8 @@ const schema = z.object({
   AI_PROVIDER: z.enum(['local', 'ollama', 'anthropic', 'openai', 'gemini']).default('local'),
   AI_MODEL: z.string().optional(),
   AI_MODEL_FAST: z.string().optional(),
+  /** Models to try, in order, when the main one is overloaded (HTTP 503/429). Comma-separated. */
+  AI_MODEL_FALLBACK: z.string().optional().transform((v) => v?.split(',').map((m) => m.trim()).filter(Boolean)),
   EMBEDDING_PROVIDER: z.enum(['local', 'ollama', 'openai', 'gemini']).default('local'),
   EMBEDDING_MODEL: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().min(1).optional(),

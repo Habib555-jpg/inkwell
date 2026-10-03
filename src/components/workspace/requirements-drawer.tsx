@@ -15,7 +15,7 @@ export function RequirementsDrawer({ chapter, characters, defaultOpen, onSaved }
   const summary = [chapter.requiredEvents.length && `${chapter.requiredEvents.length} must happen`, chapter.forbiddenEvents.length && `${chapter.forbiddenEvents.length} must not`,
     chapter.characterIds.length && `${chapter.characterIds.length} characters`].filter(Boolean).join(' · ');
   return (
-    <section className="rounded-[var(--radius-card)] border border-line bg-surface shadow-card">
+    <section className="glass rounded-[var(--radius-card)] border border-line shadow-card">
       <button onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full cursor-pointer items-center gap-3 px-5 py-3 text-left">
         <ClipboardList className="size-4 text-accent" aria-hidden />
         <span className="font-medium">Chapter requirements</span>

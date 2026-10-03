@@ -11,7 +11,7 @@ export function ActionBar({ hasVersion, isCanon, busy, onGenerate, onImprove, on
   const disabled = busy !== null;
   return (
     <div className="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Chapter actions">
-      <Button onClick={onGenerate} loading={busy === 'generate'} disabled={disabled} icon={<Sparkles className="size-4" aria-hidden />}>
+      <Button shimmer={!hasVersion} onClick={onGenerate} loading={busy === 'generate'} disabled={disabled} icon={<Sparkles className="size-4" aria-hidden />}>
         {busy === 'generate' ? 'Generating…' : hasVersion ? 'Regenerate' : 'Generate draft'}
       </Button>
       <Button variant="secondary" onClick={onImprove} loading={busy === 'improve'} disabled={disabled || !hasVersion} icon={<Wand2 className="size-4" aria-hidden />}>

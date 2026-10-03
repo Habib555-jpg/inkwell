@@ -11,7 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const user = await requireUser();
   const u = await getUsageSummary(await getAppDb(), user.id);
   const usage = (
-    <Link href="/settings" title="AI usage in the last 30 days" className="hidden h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs text-ink-faint hover:bg-sunken hover:text-ink sm:inline-flex">
+    <Link href="/settings" title="AI usage in the last 30 days" className="hidden h-8 items-center gap-1.5 rounded-full border border-line bg-sunken/60 px-3 text-xs text-ink-soft transition-colors hover:border-accent/40 hover:text-accent sm:inline-flex">
       <Gauge className="size-3.5" aria-hidden />{fmt(u.totalInput + u.totalOutput)} tokens{u.estimated ? ' est.' : ''}
     </Link>
   );

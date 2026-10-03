@@ -28,7 +28,7 @@ export function NewNovelDialog({ trigger }: { trigger?: 'button' | 'hero' }) {
 
   return (
     <>
-      <Button size={trigger === 'hero' ? 'lg' : 'md'} icon={<Plus className="size-4" aria-hidden />} onClick={() => setOpen(true)}>New novel</Button>
+      <Button shimmer size={trigger === 'hero' ? 'lg' : 'md'} icon={<Plus className="size-4" aria-hidden />} onClick={() => setOpen(true)}>New novel</Button>
       <Dialog open={open} onOpenChange={setOpen} wide title="Start a new novel" description="Everything here becomes the novel's permanent profile. You can refine it any time.">
         <form action={submit} className="grid gap-4 md:grid-cols-2">
           <Field label="Title" className="md:col-span-2">{(p) => <Input {...p} name="title" required maxLength={200} placeholder="The Ashen Crown" />}</Field>
@@ -42,10 +42,11 @@ export function NewNovelDialog({ trigger }: { trigger?: 'button' | 'hero' }) {
           <Field label="Target chapter length (words)">{(p) => <Input {...p} name="targetChapterWords" type="number" min={300} max={20000} placeholder="2500" />}</Field>
 
           <fieldset className="md:col-span-2">
-            <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">Main characters</legend>
+            <legend className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft"><span aria-hidden className="size-1.5 rotate-45 rounded-[1px] bg-gradient-to-br from-gold to-accent" />Main characters</legend>
             <div className="space-y-2">
               {chars.map((c, i) => (
-                <div key={i} className="flex gap-2">
+                <div key={i} className="flex items-center gap-2">
+                  <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-gold via-accent to-ember font-serif text-sm font-semibold text-white">{c.name.trim().charAt(0).toUpperCase() || i + 1}</span>
                   <Input aria-label={`Character ${i + 1} name`} placeholder="Name" value={c.name} onChange={(e) => setChars(chars.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} className="md:max-w-56" />
                   <Input aria-label={`Character ${i + 1} personality`} placeholder="Personality in a few words" value={c.personality} onChange={(e) => setChars(chars.map((x, j) => (j === i ? { ...x, personality: e.target.value } : x)))} />
                   <button type="button" aria-label="Remove character" onClick={() => setChars(chars.filter((_, j) => j !== i))} className="grid size-10 shrink-0 cursor-pointer place-items-center rounded-lg text-ink-faint hover:bg-sunken hover:text-changed"><Trash2 className="size-4" /></button>

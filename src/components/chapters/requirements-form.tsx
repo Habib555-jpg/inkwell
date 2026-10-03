@@ -35,14 +35,16 @@ export function RequirementsForm({ initial, characters, submitLabel, onSubmit, p
       <Field label="Desired length (words)" hint="Blank uses the novel's target.">{(p) => <Input {...p} type="number" min={200} max={20000} value={v.targetWords ?? ''} onChange={(e) => setV({ ...v, targetWords: e.target.value ? Number(e.target.value) : null })} />}</Field>
       <Field label="Additional instructions" className="md:col-span-2">{(p) => <Textarea {...p} value={v.instructions} onChange={(e) => setV({ ...v, instructions: e.target.value })} />}</Field>
       <fieldset className="md:col-span-2">
-        <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">Characters involved</legend>
+        <legend className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft"><span aria-hidden className="size-1.5 rotate-45 rounded-[1px] bg-gradient-to-br from-gold to-accent" />Characters involved</legend>
         {characters.length === 0 ? <p className="text-sm text-ink-faint">Add characters to the story bible to select them here.</p> : (
           <div className="flex flex-wrap gap-2">
             {characters.map((c) => {
               const on = v.characterIds.includes(c.id);
               return (
                 <button type="button" key={c.id} aria-pressed={on} onClick={() => toggleChar(c.id)}
-                  className={cn('h-9 cursor-pointer rounded-full border px-3 text-sm transition-colors', on ? 'border-accent bg-accent-soft text-accent' : 'border-line bg-surface hover:border-line-strong')}>
+                  className={cn('inline-flex h-10 cursor-pointer items-center gap-2 rounded-full border py-1 pl-1 pr-3.5 text-sm transition-all duration-200',
+                    on ? 'border-accent/60 bg-accent-soft text-ink shadow-glow' : 'border-line bg-sunken/50 text-ink-soft hover:border-line-strong hover:text-ink')}>
+                  <span aria-hidden className={cn('grid size-8 place-items-center rounded-full font-serif text-sm font-semibold', on ? 'bg-gradient-to-br from-gold via-accent to-ember text-white' : 'bg-surface text-ink-soft')}>{c.name.trim().charAt(0).toUpperCase()}</span>
                   {c.name}
                 </button>
               );

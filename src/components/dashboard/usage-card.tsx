@@ -7,7 +7,7 @@ const fmt = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : 
 export function UsageCard({ usage, provider }: { usage: Usage; provider: string }) {
   const max = Math.max(1, ...usage.byOperation.map((o) => o.input + o.output));
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-surface p-5 shadow-card">
+    <div className="glass rounded-[var(--radius-card)] border border-line p-5 shadow-card">
       <div className="flex items-center gap-2"><Gauge className="size-4 text-accent" aria-hidden /><h3 className="font-semibold">AI usage · 30 days</h3>
         {usage.estimated && <Badge tone="info">estimated</Badge>}</div>
       <p className="mt-3 text-3xl font-semibold tabular-nums">{fmt(usage.totalInput + usage.totalOutput)} <span className="text-sm font-normal text-ink-faint">tokens</span></p>

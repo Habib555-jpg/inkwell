@@ -1,9 +1,9 @@
 'use client';
-import { useCallback, useRef, useState, useTransition } from 'react';
+import { useCallback, useRef, useState, useSyncExternalStore, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Bot, Brain, Cpu, GitBranch, MessageSquareHeart, RefreshCw, ScanSearch } from 'lucide-react';
+import { AlertTriangle, Bot, Brain, Cpu, GitBranch, MessageSquareHeart, RefreshCw, ScanSearch, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,16 +16,21 @@ import { MemoryUsedPanel } from './memory-used-panel';
 import { VersionsPanel } from './versions-panel';
 import { ApproveDialog } from './approve-dialog';
 import { AssistantPanel } from './assistant-panel';
+import { GenerationProgress } from './generation-progress';
+import { AnimatePresence, motion } from 'motion/react';
 import { checkAction, generateAction, getProposalAction, improveAction, retryExtractionAction } from '@/app/(app)/novels/[novelId]/chapters/[chapterId]/actions';
 import type { ContinuityReport, CriticReport, MemoryLabel, WsChapter, WsFeedback, WsProposal, WsVersion, WsVersionSummary } from './types';
 
 const EditorPane = dynamic(() => import('./editor-pane'), {
   ssr: false,
-  loading: () => <div className="min-h-[65vh] animate-pulse rounded-[var(--radius-card)] border border-line bg-surface" aria-label="Loading editor" />,
+  loading: () => <div className="min-h-[65vh] animate-pulse glass rounded-[var(--radius-card)] border border-line" aria-label="Loading editor" />,
 });
 
 type Tab = 'assistant' | 'feedback' | 'continuity' | 'memory' | 'versions';
-const readTab = (): Tab => { try { return (localStorage.getItem('wn:ws-tab') as Tab) || 'feedback'; } catch { return 'feedback'; } };
+// The saved tab lives in localStorage, which the server can't read: the server snapshot is null (→ default tab),
+// so server and first client render agree, and the saved tab takes over after hydration.
+const readTab = (): Tab | null => { try { return localStorage.getItem('wn:ws-tab') as Tab | null; } catch { return null; } };
+const subscribeStorage = (cb: () => void) => { window.addEventListener('storage', cb); return () => window.removeEventListener('storage', cb); };
 
 export function ChapterWorkspace({ novelId, chapter, versions, current, characters, openConflicts, feedback, memoryUsed, provider }: {
   novelId: string; chapter: WsChapter; versions: WsVersionSummary[]; current: WsVersion | null; characters: { id: string; name: string }[];
@@ -33,7 +38,9 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<Busy>(null);
-  const [tab, setTabState] = useState<Tab>(readTab);
+  const savedTab = useSyncExternalStore(subscribeStorage, readTab, () => null);
+  const [picked, setPicked] = useState<Tab | null>(null);
+  const tab = picked ?? savedTab ?? 'assistant';
   const [proposal, setProposal] = useState<WsProposal | null>(null);
   const [reports, setReports] = useState<{ versionId: string; continuity: ContinuityReport; critic: CriticReport } | null>(null);
   const [approveOpen, setApproveOpen] = useState(false);
@@ -45,7 +52,7 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
     const f = editorApi.current ? await editorApi.current.flush() : { versionId: current!.id, savedAt: null };
     return { versionId: f.versionId ?? current!.id, expectedUpdatedAt: f.savedAt ?? undefined };
   };
-  const setTab = (t: Tab) => { setTabState(t); try { localStorage.setItem('wn:ws-tab', t); } catch { /* optional */ } };
+  const setTab = (t: Tab) => { setPicked(t); try { localStorage.setItem('wn:ws-tab', t); } catch { /* optional */ } };
   const refresh = useCallback(() => startTransition(() => router.refresh()), [router]);
 
   const run = async <T,>(kind: Exclude<Busy, null>, fn: () => Promise<{ ok: true; data: T } | { ok: false; error: string }>, after: (d: T) => void) => {
@@ -68,8 +75,8 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
     <div className="grid gap-6 px-4 py-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_minmax(360px,440px)]">
       <div className="min-w-0 space-y-4">
         <header className="flex flex-wrap items-center gap-3">
-          <span className="font-serif text-lg text-ink-faint">Chapter {chapter.number}</span>
-          <h1 className="font-serif text-3xl font-semibold tracking-tight">{chapter.title || 'Untitled'}</h1>
+          <span className="rounded-full border border-accent/25 bg-accent-soft/70 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.14em] text-accent">Chapter {chapter.number}</span>
+          <h1 className="text-gradient w-full pb-1 font-serif text-3xl font-semibold tracking-tight sm:w-auto sm:text-4xl">{chapter.title || 'Untitled'}</h1>
           <StatusBadge status={chapter.status} />
           {current && <Badge>v{current.versionNumber} · {current.source}</Badge>}
           {isLocalDraft && <Badge tone="info" icon={<Cpu className="size-3" aria-hidden />}>Local draft</Badge>}
@@ -104,17 +111,24 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
           </div>
         )}
 
-        <RequirementsDrawer chapter={chapter} characters={characters} defaultOpen={!current && !chapter.mainIdea} onSaved={refresh} />
         <ActionBar hasVersion={!!current} isCanon={isCanon} busy={busy} onGenerate={generate} onImprove={() => void improve()} onCheck={() => void check()} onApprove={() => setApproveOpen(true)} />
+        <RequirementsDrawer chapter={chapter} characters={characters} defaultOpen={!current && !chapter.mainIdea} onSaved={refresh} />
 
+        <div className="relative">
+        <AnimatePresence>{busy === 'generate' && <GenerationProgress key="gen" />}</AnimatePresence>
         {current ? (
+          // each new version blurs in (Magic UI "Blur Fade")
+          <motion.div key={current.id} initial={{ opacity: 0, y: 8, filter: 'blur(6px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} transition={{ duration: 0.5, ease: 'easeOut' }}>
           <EditorPane key={current.id} chapterId={chapter.id} apiRef={editorApi} versionId={current.id} versionNumber={current.versionNumber} initialContent={current.content}
             readOnly={busy === 'generate' || busy === 'apply'} targetWords={chapter.targetWords ?? 2500} onForked={refresh} />
+          </motion.div>
         ) : (
-          <div className="grid min-h-[40vh] place-items-center rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface/60 p-8 text-center text-ink-soft">
-            <div><p className="font-medium text-ink">No draft yet</p><p className="mt-1 text-sm">Check the requirements, then generate a draft — memory from approved chapters is added automatically.</p></div>
+          <div className="glass relative grid min-h-[40vh] place-items-center overflow-hidden rounded-[var(--radius-card)] border border-dashed border-line-strong p-8 text-center text-ink-soft">
+            <div className="pointer-events-none absolute left-1/2 top-1/3 size-72 -translate-x-1/2 rounded-full bg-accent/10 blur-3xl" aria-hidden />
+            <div className="relative"><Sparkles className="mx-auto mb-3 size-6 text-accent" aria-hidden /><p className="font-serif text-lg font-semibold text-ink">No draft yet</p><p className="mt-1 text-sm">Check the requirements, then generate a draft — memory from approved chapters is added automatically.</p></div>
           </div>
         )}
+        </div>
       </div>
 
       <aside className="min-w-0 xl:sticky xl:top-20 xl:max-h-[calc(100dvh-6rem)] xl:overflow-y-auto">
@@ -126,9 +140,9 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
             <TabsTrigger value="memory"><Brain className="size-4" aria-hidden />Memory</TabsTrigger>
             <TabsTrigger value="versions"><GitBranch className="size-4" aria-hidden />Versions</TabsTrigger>
           </TabsList>
-          <div className="mt-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-card">
+          <div className="glass mt-3 rounded-[var(--radius-card)] border border-line p-4 shadow-card">
             <TabsContent value="assistant" className="mt-0">
-              <AssistantPanel novelId={novelId} chapterId={chapter.id} onVersionCreated={refresh}
+              <AssistantPanel novelId={novelId} chapterId={chapter.id} hasDraft={!!current} onVersionCreated={refresh}
                 onReviewProposal={(id) => void run('feedback', () => getProposalAction(id), (p) => { setProposal({ id: p.id, source: p.source, baseVersionId: p.baseVersionId, items: p.items }); setTab('feedback'); })} />
             </TabsContent>
             <TabsContent value="feedback" className="mt-0">
@@ -148,7 +162,7 @@ export function ChapterWorkspace({ novelId, chapter, versions, current, characte
             </TabsContent>
           </div>
         </Tabs>
-        <p className="mt-3 text-center text-xs text-ink-faint">Provider: {provider === 'local' ? 'offline local (no key)' : provider}</p>
+        <p className="mt-3 text-center text-xs text-ink-soft">Provider: {provider === 'local' ? 'offline local (no key)' : provider}</p>
       </aside>
 
       {current && (

@@ -73,7 +73,7 @@ export default async function MemoryPage({ params, searchParams }: { params: Pro
       <div className="space-y-4">
         <p className="text-sm text-ink-soft">Voice profiles learn only from approved dialogue. Anything you edit is locked and never re-derived. <Link className="text-accent hover:underline" href={`/novels/${novelId}/characters`}>Edit character details →</Link></p>
         {characters.map((c, i) => (
-          <div key={c.id} className="rounded-[var(--radius-card)] border border-line bg-surface p-5 shadow-card">
+          <div key={c.id} className="glass rounded-[var(--radius-card)] border border-line p-5 shadow-card">
             <VoiceProfileEditor novelId={novelId} name={c.name} profile={profiles[i]} names={names} notes={notes.filter((n) => n.characterId === c.id).map((n) => ({ id: n.id, note: n.note }))} />
           </div>
         ))}

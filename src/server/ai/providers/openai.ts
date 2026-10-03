@@ -12,8 +12,8 @@ export class OpenAIProvider extends LLMProviderBase {
   readonly id: string;
   private client: OpenAI;
   private jsonMode: boolean;
-  constructor(opts: { apiKey: string; main: string; fast: string; client?: OpenAI; baseURL?: string; id?: string; jsonMode?: boolean }) {
-    super({ main: opts.main, fast: opts.fast });
+  constructor(opts: { apiKey: string; main: string; fast: string; fallbacks?: string[]; client?: OpenAI; baseURL?: string; id?: string; jsonMode?: boolean }) {
+    super({ main: opts.main, fast: opts.fast, fallbacks: opts.fallbacks });
     this.id = opts.id ?? 'openai';
     this.jsonMode = opts.jsonMode ?? true;
     this.client = opts.client ?? new OpenAI({ apiKey: opts.apiKey, ...(opts.baseURL ? { baseURL: opts.baseURL } : {}) });

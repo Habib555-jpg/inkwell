@@ -14,17 +14,17 @@ export function AuthForm({ mode, action }: { mode: 'login' | 'register'; action:
   const error = state && !state.ok ? state.error : null;
   const isLogin = mode === 'login';
   return (
-    <main className="bg-hero grid min-h-dvh place-items-center px-4 py-12">
+    <main className="relative grid min-h-dvh place-items-center overflow-hidden px-4 py-12">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: 'easeOut' }} className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="mb-3 grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-accent to-accent-strong text-accent-ink shadow-lift">
+          <motion.div initial={{ scale: 0.7, rotate: -12 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: 'spring', stiffness: 240, damping: 16, delay: 0.1 }} className="bg-brand mb-4 grid size-14 place-items-center rounded-2xl text-white shadow-glow">
             <Feather className="size-6" aria-hidden />
-          </div>
-          <h1 className="font-serif text-3xl font-semibold tracking-tight">Inkwell</h1>
+          </motion.div>
+          <h1 className="text-gradient pb-1 font-serif text-4xl font-semibold tracking-tight">Inkwell</h1>
           <p className="mt-1 text-sm text-ink-soft">Your novel&apos;s writing partner. Approved canon is truth.</p>
         </div>
-        <form action={formAction} className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-card">
-          <h2 className="text-lg font-semibold">{isLogin ? 'Welcome back' : 'Create your account'}</h2>
+        <form action={formAction} className="glass space-y-4 rounded-2xl border border-line p-6 shadow-lift">
+          <h2 className="font-serif text-xl font-semibold">{isLogin ? 'Welcome back' : 'Create your account'}</h2>
           {!isLogin && <Field label="Name">{(p) => <Input {...p} name="name" autoComplete="name" />}</Field>}
           <Field label="Email">{(p) => <Input {...p} name="email" type="email" required autoComplete="email" />}</Field>
           <Field label="Password" hint={isLogin ? undefined : 'At least 8 characters.'}>

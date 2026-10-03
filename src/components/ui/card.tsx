@@ -1,7 +1,7 @@
 import { cn } from '@/lib/cn';
 
 export function Card({ className, ...p }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-[var(--radius-card)] border border-line bg-surface shadow-card', className)} {...p} />;
+  return <div className={cn('glass rounded-[var(--radius-card)] border border-line shadow-card', className)} {...p} />;
 }
 export function CardHeader({ title, description, action, className }: { title: React.ReactNode; description?: React.ReactNode; action?: React.ReactNode; className?: string }) {
   return (

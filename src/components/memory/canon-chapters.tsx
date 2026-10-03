@@ -49,6 +49,8 @@ function ChapterSummary({ c, novelId }: { c: Overview['canonChapters'][number]; 
   );
 }
 
+import { MemoryFlow } from './memory-flow';
+
 export function MemoryOverview({ overview, novelId }: { overview: Overview; novelId: string }) {
   const k = overview.counts;
   const layers = [
@@ -62,17 +64,18 @@ export function MemoryOverview({ overview, novelId }: { overview: Overview; nove
   ];
   return (
     <div className="space-y-8">
+      <MemoryFlow />
       <motion.ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" initial="h" animate="s" variants={{ h: {}, s: { transition: { staggerChildren: 0.06 } } }}>
         {layers.map(({ n, title, value, sub, icon: Icon, href }) => (
           <motion.li key={n} variants={{ h: { opacity: 0, y: 8 }, s: { opacity: 1, y: 0 } }} whileHover={{ y: -2 }}>
-            <Link href={href} className="block rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-card transition-shadow hover:shadow-lift">
+            <Link href={href} className="block glass rounded-[var(--radius-card)] border border-line p-4 shadow-card transition-shadow hover:shadow-lift">
               <div className="flex items-center justify-between"><Icon className="size-4 text-accent" aria-hidden /><span className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">Layer {n}</span></div>
               <p className="mt-2 text-sm font-medium">{title}</p>
               {n === 7 ? <p className="text-xs text-ink-faint">{sub}</p> : <><Counter value={value} /><p className="text-xs text-ink-faint">{sub}</p></>}
             </Link>
           </motion.li>
         ))}
-        <li className="rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-card">
+        <li className="glass rounded-[var(--radius-card)] border border-line p-4 shadow-card">
           <Brain className="size-4 text-accent" aria-hidden /><p className="mt-2 text-sm font-medium">Conflicts to review</p>
           <Counter value={k.conflictsOpen} /><p className="text-xs text-ink-faint"><Link className="text-accent hover:underline" href="?tab=conflicts">Open conflicts</Link></p>
         </li>

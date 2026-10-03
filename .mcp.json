@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "node",
+      "args": ["C:/Users/lenovo/OneDrive/Desktop/story review & generator/node_modules/shadcn/dist/index.js", "mcp"]
+    }
+  }
+}
